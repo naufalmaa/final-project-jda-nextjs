@@ -19,6 +19,11 @@ const links = [
     href: "/dashboard/school",
     icon: MapIcon,
   },
+  {
+    name: "Review",
+    href: "/dashboard/review",
+    icon: DocumentDuplicateIcon,
+  },
   { name: "About", href: "/dashboard/about", icon: UserGroupIcon },
 ];
 

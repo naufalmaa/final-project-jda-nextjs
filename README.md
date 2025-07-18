@@ -29,3 +29,31 @@ Ini adalah project yang akan dikerjakan untuk Tugas Besar Jabar Digital Academy 
 5. Tambahkan Navigasi Antar Halaman - terdapat di /app/ui/dashboard/sidenav.tsx ✔
 
 6. Pengumpulan ✔
+
+### Tugas Pertemuan Ketiga ✅
+
+1. Buat endpoint API di /api/products atau endpoint lain sesuai kebutuhan aplikasi yang kamu buat, dengan sistem CRUD yang meliputi:  -> sudah terdapat dua api untuk CRUD statis: api/reviews dan api/school. ✔
+
+- Mengambil semua data
+
+- Menambahkan data baru
+
+- Mengupdate data
+
+- Menghapus data
+
+Data disimpan di array static (seperti contoh users pada kelas pertemuan ke-4).
+
+Structure data untuk product: { id, name, price } atau sesuai field yang relevan dengan resource-mu.
+
+2. Buat halaman /products atau halaman lain yang terkait dengan resource API-mu, yang memiliki fitur:  -> list data sudah bisa ditampilkan di page yang sama: dashboard/review dan dashboard/school. ✔
+
+- Menampilkan list data
+
+- Menambahkan data baru
+
+- Mengupdate data
+
+- Menghapus data
+
+3. Pengumpulan ✔
