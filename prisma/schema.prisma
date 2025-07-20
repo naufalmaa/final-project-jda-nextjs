@@ -1,0 +1,41 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model School {
+  id         Int      @id @default(autoincrement())
+  name       String
+  status     String
+  npsn       String
+  bentuk     String
+  telp       String
+  alamat     String
+  kelurahan  String
+  kecamatan  String
+  lat        Float?   // nullable
+  lng        Float?   // nullable
+  reviews    Review[]
+}
+
+model Review {
+  id             Int      @id @default(autoincrement())
+  school         School   @relation(fields: [schoolId], references: [id])
+  schoolId       Int
+  name           String
+  role           String
+  ratings        Json     // { kenyamanan, pembelajaran, ... }
+  biayaKategori  String
+  komentar       String
+  tanggal        DateTime @default(now())
+}

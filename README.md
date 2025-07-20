@@ -57,3 +57,23 @@ Structure data untuk product: { id, name, price } atau sesuai field yang relevan
 - Menghapus data
 
 3. Pengumpulan ✔
+
+### Tugas Pertemuan Keempat ✅
+
+1. Buatlah sebuah aplikasi CRUD sederhana menggunakan Next.js yang terhubung dengan database. -> database tersimpan di neon dengan menggunakan data sekolah dasar daerah Bandung (terdapat di /dashboard/school ✔)
+
+2. Aplikasi harus memiliki CRUD lengkap, yaitu: (dapat dicheck di /dashboard/school ✔)
+
+- Create (menambahkan data baru)
+
+- Read (menampilkan data)
+
+- Update (mengedit data)
+
+- Delete (menghapus data)
+
+3. Pastikan data tersimpan di database bukan di local atau di variable statis. -> database tersimpan di neon dengan menggunakan data sekolah dasar daerah Bandung (terdapat di /dashboard/school ✔)
+
+4. Pengumpulan: ✔
+
+note: untuk review masih dalam pengerjaan (saat ini, baru database sekolah)
