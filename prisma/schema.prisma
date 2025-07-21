@@ -25,17 +25,31 @@ model School {
   kecamatan  String
   lat        Float?   // nullable
   lng        Float?   // nullable
-  reviews    Review[]
+  
+    // New editable fields:
+  description   String?  @db.Text
+  programs      String?  @db.Text
+  achievements  String?  @db.Text
+  website       String?
+  contact       String?
+
+  reviews       Review[]
 }
 
 model Review {
-  id             Int      @id @default(autoincrement())
-  school         School   @relation(fields: [schoolId], references: [id])
-  schoolId       Int
-  name           String
-  role           String
-  ratings        Json     // { kenyamanan, pembelajaran, ... }
-  biayaKategori  String
-  komentar       String
-  tanggal        DateTime @default(now())
+  id            Int      @id @default(autoincrement())
+  schoolId      Int
+  name          String
+  role          String
+  biaya         String
+  komentar      String
+  tanggal       DateTime @default(now())
+
+  // Rating Parameters
+  kenyamanan    Int
+  pembelajaran  Int
+  fasilitas     Int
+  kepemimpinan  Int
+
+  school        School   @relation(fields: [schoolId], references: [id])
 }

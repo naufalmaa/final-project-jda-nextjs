@@ -1,3 +1,5 @@
+// File: /app/ui/review/ReviewList.tsx
+
 'use client';
 
 import { staticSchools } from '@/app/lib/staticSchools';

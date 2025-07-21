@@ -3,39 +3,87 @@
 import { prisma } from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 
+/**
+ * Handles GET requests to fetch a single school by its ID.
+ */
+export async function GET(_: Request, { params }: { params: { id: string } }) {
+  try {
+    // The 'id' is already available directly from the params object.
+    const id = parseInt(params.id);
+    if (isNaN(id)) {
+      return NextResponse.json({ error: 'Invalid school ID' }, { status: 400 });
+    }
+
+    const school = await prisma.school.findUnique({
+      where: { id },
+    });
+
+    if (!school) {
+      return new NextResponse('School not found', { status: 404 });
+    }
+
+    return NextResponse.json(school);
+  } catch (error) {
+    console.error('[GET /api/schools/:id] Error:', error);
+    return new NextResponse('Internal Server Error', { status: 500 });
+  }
+}
+
+/**
+ * Handles PUT requests to update a school's content.
+ * This is now more secure as it only updates specific, editable fields.
+ */
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
+    // The 'id' is already available directly from the params object.
+    const id = parseInt(params.id);
+    if (isNaN(id)) {
+      return NextResponse.json({ error: 'Invalid school ID' }, { status: 400 });
+    }
+
     const body = await req.json();
-    const school = await prisma.school.update({
-      where: { id: parseInt(params.id) },
+
+    // Only extract the fields that are meant to be editable from this component.
+    // This prevents unwanted changes to other school data.
+    const { description, programs, achievements, website, contact } = body;
+
+    const updatedSchool = await prisma.school.update({
+      where: { id },
       data: {
-        name: body.name,
-        status: body.status,
-        npsn: body.npsn,
-        bentuk: body.bentuk,
-        telp: body.telp,
-        alamat: body.alamat,
-        kelurahan: body.kelurahan,
-        kecamatan: body.kecamatan,
-        lat: body.lat ? parseFloat(body.lat) : null,
-        lng: body.lng ? parseFloat(body.lng) : null,
+        description,
+        programs,
+        achievements,
+        website,
+        contact,
       },
     });
-    return NextResponse.json(school);
+
+    return NextResponse.json(updatedSchool);
   } catch (error) {
     console.error('[PUT /api/schools/:id] Error:', error);
     return NextResponse.json({ error: 'Gagal memperbarui sekolah.' }, { status: 500 });
   }
 }
 
-export async function DELETE(_: Request, { params }: { params: { id: string } }) {
-  try {
-    await prisma.school.delete({
-      where: { id: parseInt(params.id) },
-    });
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('[DELETE /api/schools/:id] Error:', error);
-    return NextResponse.json({ error: 'Gagal menghapus sekolah.' }, { status: 500 });
-  }
+/**
+ * Handles DELETE requests to remove a school.
+ */
+export async function DELETE(_: Request, { params }: { params: { id:string } }) {
+    try {
+        // The 'id' is already available directly from the params object.
+        const id = parseInt(params.id);
+        if (isNaN(id)) {
+            return NextResponse.json({ error: 'Invalid school ID' }, { status: 400 });
+        }
+
+        await prisma.school.delete({
+            where: { id },
+        });
+        
+        // Return a 204 No Content response for successful deletion.
+        return new NextResponse(null, { status: 204 });
+    } catch (error) {
+        console.error('[DELETE /api/schools/:id] Error:', error);
+        return NextResponse.json({ error: 'Gagal menghapus sekolah.' }, { status: 500 });
+    }
 }

@@ -1,5 +1,21 @@
 // File: lib/actions.ts
 
+import { prisma } from './prisma';
+
+export async function getSchoolById(id: number) {
+  try {
+    const school = await prisma.school.findUnique({
+      where: { id },
+    });
+
+    return school;
+  } catch (error) {
+    console.error('[getSchoolById] Error:', error);
+    return null;
+  }
+}
+
+
 export async function fetchSchools() {
     try {
       const base = process.env.NEXT_PUBLIC_BASE_URL || '';

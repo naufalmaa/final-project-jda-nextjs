@@ -1,3 +1,5 @@
+// File: app/api/schools/route.ts
+
 // import { NextResponse } from 'next/server';
 // import { school } from '@/app/lib/schoolData';
 

@@ -16,7 +16,7 @@ export default function Page() {
         <div className="relative w-0 h-0 border-l-[15px] border-r-[15px] border-b-[26px] border-l-transparent border-r-transparent border-b-black"/>
           <p className={`text-xl text-gray-800 md:text-3xl md:leading-normal font-[lusitana] `}>
             <strong>Selamat datang di ArahSekolah!</strong> Ini adalah Website Prototipe untuk mencari {' '}
-            <a href="https://nextjs.org/learn/" className="text-blue-400">
+            <a className="text-[#1D3557]">
               Sekolah 
             </a>
             {' '} terbaik di Bandung!
