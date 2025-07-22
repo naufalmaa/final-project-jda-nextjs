@@ -30,7 +30,7 @@ Ini adalah project yang akan dikerjakan untuk Tugas Besar Jabar Digital Academy 
 
 6. Pengumpulan ✔
 
-### Tugas Pertemuan Ketiga ✅
+### Tugas Pertemuan Keempat ✅
 
 1. Buat endpoint API di /api/products atau endpoint lain sesuai kebutuhan aplikasi yang kamu buat, dengan sistem CRUD yang meliputi:  -> sudah terdapat dua api untuk CRUD statis: api/reviews dan api/school. ✔
 
@@ -58,7 +58,7 @@ Structure data untuk product: { id, name, price } atau sesuai field yang relevan
 
 3. Pengumpulan ✔
 
-### Tugas Pertemuan Keempat ✅
+### Tugas Pertemuan Kelima ✅
 
 1. Buatlah sebuah aplikasi CRUD sederhana menggunakan Next.js yang terhubung dengan database. -> database tersimpan di neon dengan menggunakan data sekolah dasar daerah Bandung (terdapat di /dashboard/school ✔)
 
@@ -77,3 +77,26 @@ Structure data untuk product: { id, name, price } atau sesuai field yang relevan
 4. Pengumpulan: ✔
 
 note: untuk review masih dalam pengerjaan (saat ini, baru database sekolah)
+
+### Tugas Pertemuan Keenam ✅
+
+Tujuan Tugas:
+
+Memahami konsep state management global dengan Redux
+Melatih kemampuan mengakses dan memodifikasi state di berbagai komponen
+Mengasah pemahaman komunikasi data antar komponen melalui store
+
+
+Deskripsi Tugas
+
+Buatlah aplikasi sederhana dengan bebas tema yang memiliki ketentuan berikut: -> Redux sudah dipakai untuk dashboard/school/[id], dengan menampilkan Redux untuk kategori Sekolah dan Review! (terdapat di /dashboard/school) ✔
+
+Ketentuan Utama:
+
+Gunakan Redux sebagai state management global.
+Memiliki minimal 2 komponen berbeda yang:
+Mengakses state global menggunakan useSelector
+Mengubah state global menggunakan useDispatch
+Komponen A melakukan update atau menambahkan data ke store.
+Komponen B membaca data tersebut dan menampilkannya di UI.
+

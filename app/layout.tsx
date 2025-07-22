@@ -1,14 +1,19 @@
-import '@/app/ui/global.css';
-import { inter } from '@/app/ui/fonts';
- 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+// app/layout.tsx
+import './ui/global.css'
+import Providers from './Providers' // Pastikan path-nya sesuai
+
+
+export const metadata = {
+  title: 'ArahSekolah',
+  description: 'Aplikasi untuk mereview dan menilai sekolah',
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} antialiased`}>{children}</body>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

@@ -9,12 +9,21 @@ import SchoolContent from '@/app/ui/school/SchoolContent';
 import { StarIcon } from 'lucide-react';
 import { School, Review } from '@/app/lib/types';
 
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '@/app/store/store';
+import { setSchool } from '@/app/store/schoolSlice';
+
 export default function SchoolDetailPage() {
   const { id } = useParams();
-  const [school, setSchool] = useState<School | null>(null);
+
+  const dispatch = useDispatch();
+  const school = useSelector((state: RootState) => state.school.selected);  
+  
   const [reviews, setReviews] = useState<Review[]>([]);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const state = useSelector((state) => state);
+  console.log('FULL REDUX STATE:', state);
 
   // Function to fetch only reviews. This is efficient for refreshing after a review action.
   const fetchReviews = useCallback(async () => {
@@ -48,15 +57,15 @@ export default function SchoolDetailPage() {
       const schoolData = await schoolRes.json();
       const reviewsData = await reviewsRes.json();
 
-      setSchool(schoolData);
+      // setSchool(schoolData);
+      dispatch(setSchool(schoolData)); // ✅ TAMBAH
       setReviews(reviewsData);
     } catch (error) {
       console.error('Error fetching data:', error);
-      setSchool(null); // Set school to null on error to show error message
     } finally {
       setIsLoading(false);
     }
-  }, [id]); // Removed 'school' from dependencies to prevent infinite loop
+  }, [id, dispatch]); // Removed 'school' from dependencies to prevent infinite loop
 
   useEffect(() => {
     fetchAllData();
@@ -112,7 +121,7 @@ export default function SchoolDetailPage() {
 
       {/* --- School Content Section --- */}
       {/* Here is the integrated component. It receives the `school` data and the `fetchAllData` function to call on update. */}
-      <SchoolContent school={school} onUpdate={fetchAllData} />
+      <SchoolContent />
 
       {/* --- Review Section --- */}
       <div id="review-section" className="bg-white p-6 rounded-lg shadow-md scroll-mt-4">
@@ -125,7 +134,6 @@ export default function SchoolDetailPage() {
         />
         <div className="mt-6">
           <ReviewTable
-            reviews={reviews}
             onEdit={handleEditReview}
             onDelete={handleDeleteReview}
           />

@@ -1,29 +1,44 @@
-// File: /app/ui/review/ReviewTable.tsx
-
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pencil, Trash2, Star } from 'lucide-react';
 import { Review } from '@/app/lib/types';
+import { RootState } from '@/app/store/store';
+import { useSelector, useDispatch } from 'react-redux';
+import { deleteReview, setReviews } from '@/app/store/reviewSlice';
 
 interface ReviewTableProps {
-  reviews: Review[];
   onEdit: (review: Review) => void;
   onDelete: (id: number) => void;
+  schoolId: number;
 }
 
-export default function ReviewTable({ reviews, onEdit, onDelete }: ReviewTableProps) {
+export default function ReviewTable({ onEdit, onDelete, schoolId }: ReviewTableProps) {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
-  console.log('REVIEW TABLE — DATA:', reviews);
+  const dispatch = useDispatch();
+  const reviews = useSelector((state: RootState) => state.review.reviews);
 
-  const handleConfirmDelete = (id: number) => {
-    setConfirmDelete(id);
-  };
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const res = await fetch(`/api/reviews?schoolId=${schoolId}`);
+        const data = await res.json();
+        dispatch(setReviews(data));
+        console.log('✅ Review fetched:', data);
+      } catch (err) {
+        console.error('❌ Gagal ambil review dari API:', err);
+      }
+    };
 
+    fetchReviews();
+  }, [dispatch, schoolId]);
+
+  const handleConfirmDelete = (id: number) => setConfirmDelete(id);
   const handleCancelDelete = () => setConfirmDelete(null);
 
   const handleDelete = () => {
     if (confirmDelete !== null) {
-      onDelete(confirmDelete);
+      dispatch(deleteReview(confirmDelete));
+      onDelete(confirmDelete); // ⬅️ pastikan ini juga memanggil API DELETE
       setConfirmDelete(null);
     }
   };

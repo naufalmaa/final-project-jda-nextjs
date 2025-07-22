@@ -4,6 +4,10 @@
 import { useState, useEffect } from 'react';
 import { School } from '@/app/lib/types'; // Assuming you have a types file
 import { Edit, Save, X, Loader2 } from 'lucide-react';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '@/app/store/store';
+import { updateSchool } from '@/app/store/schoolSlice';
+
 
 // Define the component's props for type safety
 interface SchoolContentProps {
@@ -20,7 +24,12 @@ type FormData = {
   contact: string;
 };
 
-export default function SchoolContent({ school, onUpdate }: SchoolContentProps) {
+export default function SchoolContent() {
+  const dispatch = useDispatch();
+  // const school = useSelector((state: RootState) => state.school.selected);
+  const school = useSelector((state: any) => state.school?.selected);
+
+
   const [editMode, setEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,49 +56,43 @@ export default function SchoolContent({ school, onUpdate }: SchoolContentProps) 
   }, [school]);
 
   const handleSave = async () => {
-    // Prevent saving if school data is not available
     if (!school) return;
-
-    setIsSaving(true);
-    setError(null);
+  
     try {
-      const response = await fetch(`/api/schools/${school.id}`, {
+      const updatedData = { ...school, ...form };
+  
+      const res = await fetch(`/api/schools/${school.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(updatedData),
       });
-
-      if (!response.ok) {
-        throw new Error('Gagal menyimpan perubahan. Silakan coba lagi.');
-      }
-
-      // If save is successful:
+  
+      if (!res.ok) throw new Error('Gagal update data sekolah');
+  
+      dispatch(updateSchool(form));
       setEditMode(false);
-      onUpdate(); // Trigger the parent component to refetch all school data
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsSaving(false);
+    } catch (error) {
+      console.error('Error updating school:', error);
+      alert('Gagal menyimpan perubahan.');
     }
   };
 
+
   const handleCancel = () => {
-    setEditMode(false);
-    setError(null);
-    // ✅ FIX: Add a guard clause to ensure school object exists before resetting the form
     if (school) {
-        setForm({
-            description: school.description || '',
-            programs: school.programs || '',
-            achievements: school.achievements || '',
-            website: school.website || '',
-            contact: school.contact || '',
-        });
+      setForm({
+        description: school.description || '',
+        programs: school.programs || '',
+        achievements: school.achievements || '',
+        website: school.website || '',
+        contact: school.contact || '',
+      });
     }
+    
   };
 
   // For now, we assume the role is always admin for the edit button to be visible
-  const isSuperAdmin = true; 
+  const isSuperAdmin = true;
 
   // ✅ FIX: Add a defensive check. If the school data hasn't loaded, don't render the component.
   // The parent page will show a loading indicator instead.

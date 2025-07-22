@@ -3,6 +3,9 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Review } from '@/app/lib/types'; // Make sure this type is defined
+import { useDispatch } from 'react-redux';
+import { addReview, deleteReview } from '@/app/store/reviewSlice';
+
 
 // Define component props for clarity
 interface ReviewFormToggleProps {
@@ -38,6 +41,7 @@ export default function ReviewFormToggle({
   onCancel,
 }: ReviewFormToggleProps) {
   const [showForm, setShowForm] = useState(!!editing);
+  const dispatch = useDispatch();
   const [form, setForm] = useState({ ...defaultForm, schoolId });
 
   useEffect(() => {
@@ -63,29 +67,49 @@ export default function ReviewFormToggle({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const method = editing ? 'PUT' : 'POST';
-    const endpoint = editing ? `/api/reviews/${editing.id}` : '/api/reviews';
-
+  
+    const reviewToSend = {
+      schoolId: Number(schoolId), // PASTIKAN ANGKA
+      name: form.name,
+      role: form.role,
+      biaya: form.biaya,
+      komentar: form.komentar,
+      kenyamanan: Number(form.kenyamanan),
+      pembelajaran: Number(form.pembelajaran),
+      fasilitas: Number(form.fasilitas),
+      kepemimpinan: Number(form.kepemimpinan),
+    };
+  
     try {
-      const response = await fetch(endpoint, {
+      const method = editing ? 'PUT' : 'POST';
+      const endpoint = editing ? `/api/reviews/${editing.id}` : '/api/reviews';
+  
+      const res = await fetch(endpoint, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(reviewToSend),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit review');
+  
+      const saved = await res.json();
+  
+      if (!res.ok) {
+        console.error('❌ Gagal menyimpan ke DB:', saved);
+        throw new Error(saved.message || 'Gagal menyimpan review');
       }
-
-      // Hide the form and notify the parent component to refetch data
+  
+      // ✅ Simpan ke Redux hanya jika berhasil masuk DB
+      if (editing) dispatch(deleteReview(editing.id));
+      dispatch(addReview(saved)); // dari API
+  
       setShowForm(false);
-      onSubmit();
-    } catch (error) {
-      console.error('Failed to submit review:', error);
-      // You could add user-facing error feedback here
+      onSubmit(); // refresh tabel jika perlu
+    } catch (err) {
+      console.error('❌ Submit error:', err);
+      alert('Gagal menyimpan review ke database');
     }
   };
+  
+  
   
   const handleOpen = () => setShowForm(true);
 

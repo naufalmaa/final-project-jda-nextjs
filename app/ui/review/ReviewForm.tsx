@@ -2,6 +2,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { addReview } from '@/app/store/reviewSlice'; // ⬅️ pastikan path ini benar
 import { staticSchools } from '@/app/lib/staticSchools';
 
 const biayaOptions = [
@@ -15,6 +17,9 @@ const biayaOptions = [
 const aspek = ['kenyamanan', 'pembelajaran', 'fasilitas', 'kepemimpinan'];
 
 export default function ReviewForm({ onSubmit, defaultValue }: { onSubmit: (review: any) => void, defaultValue?: any }) {
+
+  const dispatch = useDispatch();
+
   const [form, setForm] = useState(
     defaultValue || {
       schoolId: '',
@@ -42,16 +47,26 @@ export default function ReviewForm({ onSubmit, defaultValue }: { onSubmit: (revi
 
   function handleSubmit(e: any) {
     e.preventDefault();
+  
     if (!form.schoolId || !form.name || !form.role) {
       alert('Lengkapi semua kolom');
       return;
     }
-    const stored = localStorage.getItem('reviews');
-    const parsed = stored ? JSON.parse(stored) : [];
-    const updated = defaultValue
-      ? parsed.map((r: any) => (r.id === defaultValue.id ? { ...form, id: defaultValue.id, tanggal: defaultValue.tanggal } : r))
-      : [...parsed, { ...form, id: Date.now(), tanggal: new Date().toISOString() }];
-    localStorage.setItem('reviews', JSON.stringify(updated));
+  
+    const reviewData = {
+      ...form,
+      id: defaultValue?.id || Date.now(),
+      tanggal: defaultValue?.tanggal || new Date().toISOString(),
+    };
+  
+    dispatch(addReview(reviewData)); // ⬅️ Kirim ke Redux
+    console.log('DISPATCHING:', reviewData);
+  
+    localStorage.setItem('reviews', JSON.stringify([
+      ...(JSON.parse(localStorage.getItem('reviews') || '[]')),
+      reviewData
+    ]));
+  
     onSubmit(form);
   }
 
