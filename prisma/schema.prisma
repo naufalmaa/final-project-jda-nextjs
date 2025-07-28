@@ -17,6 +17,7 @@ model User {
   emailVerified DateTime?
   image         String?
   password      String?   // For email/password auth
+  passwordHash  String?   // Hashed Password
   role          Role      @default(USER)
   
   // For school_admin assignment

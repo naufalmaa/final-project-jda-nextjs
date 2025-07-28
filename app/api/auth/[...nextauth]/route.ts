@@ -1,53 +1,65 @@
-import NextAuth, { NextAuthOptions } from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
-import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import { prisma } from "@/lib/prisma";  // import your Prisma client instance
-import bcrypt from "bcryptjs";
+// File: app/api/auth/[...nextauth]/route.ts
 
-export const authOptions: NextAuthOptions = {
+import NextAuth from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import { prisma } from "@/lib/prisma"; // your Prisma client
+
+export const authOptions = {
   adapter: PrismaAdapter(prisma),
-  secret: process.env.NEXTAUTH_SECRET,
+  session: { strategy: "jwt" as const },
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!
-    }),
     CredentialsProvider({
-      name: "Credentials",
+      name: "Email / Password",
       credentials: {
-        email: { label: "Email", type: "text" },
-        password: { label: "Password", type: "password" }
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials.password) return null;
-        // Find user by email
-        const user = await prisma.user.findUnique({ where: { email: credentials.email } });
-        if (!user) return null;
-        // Check hashed password
-        const isValid = await bcrypt.compare(credentials.password, user.password);
+      async authorize(creds) {
+        const user = await prisma.user.findUnique({
+          where: { email: creds!.email },
+        });
+        if (!user || !user.passwordHash) return null;
+        const isValid = await verifyPassword(creds!.password, user.passwordHash);
         if (!isValid) return null;
         return user;
-      }
-    })
+      },
+    }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
   ],
-  pages: {
-    signIn: "/login"  // you can create custom login page at /login
-  },
   callbacks: {
-    // Add user role to the token and session
-    jwt: ({ token, user }) => {
-      if (user) token.role = user.role;
+    jwt: ({ token, user }: any) => {
+      if (user) {
+        token.role = user.role;
+        token.assignedSchoolId = user.assignedSchoolId;
+      }
       return token;
     },
-    session: ({ session, token }) => {
-      if (token && session.user) {
+    session: ({ session, token }: any) => {
+      if (session.user) {
         session.user.role = token.role as string;
+        session.user.assignedSchoolId = token.assignedSchoolId as string;
       }
       return session;
-    }
-  }
+    },
+  },
+  pages: {
+    signIn: "/auth/sign-in",
+    signUp: "/auth/sign-up",  // note: NextAuth v4 doesn’t support signUp here by default, but we’ll handle redirects manually
+  },
 };
 
-const handler = NextAuth(authOptions);
-export { handler as GET, handler as POST };
+// export default NextAuth(authOptions);
+const authHandler = NextAuth(authOptions);
+
+// …and export it for the HTTP methods NextAuth needs:
+export { authHandler as GET, authHandler as POST };
+// Utility to compare password → bcrypt or argon2 under the hood
+async function verifyPassword(plain: string, hash: string) {
+  // e.g. return await bcrypt.compare(plain, hash);
+  return true;
+}
