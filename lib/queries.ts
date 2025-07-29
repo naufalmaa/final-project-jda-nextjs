@@ -63,6 +63,7 @@ export function useAddReview() {
     mutationFn: async (newReview) => {
       const res = await fetch('/api/reviews', {
         method: 'POST',
+        credentials: 'include',   
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newReview),
       });
