@@ -1,8 +1,8 @@
-// File: components/dashboard/AddReviewForm.tsx
+// File: components/dashboard/ReviewForm.tsx (renamed from AddReviewForm.tsx)
 
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -20,10 +20,22 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { StarRatingInput } from "@/components/ui/star-rating-input"; // NEW IMPORT
+import { StarRatingInput } from "@/components/ui/star-rating-input";
+import { Review } from "@prisma/client";
 
-interface AddReviewFormProps {
-  schoolId: string;
+interface ReviewWithUser extends Review {
+  user: {
+    id: string;
+    name: string | null;
+    email: string | null;
+  };
+}
+
+interface ReviewFormProps { // Renamed from AddReviewFormProps
+  schoolId: number;
+  onReviewSubmitted: () => void;
+  currentReview?: ReviewWithUser | null; // Optional prop for editing
+  onCancelEdit?: () => void; // NEW: Callback for when editing is cancelled
 }
 
 const formSchema = z.object({
@@ -31,13 +43,13 @@ const formSchema = z.object({
   role: z.string().min(1, "Your role (e.g., Parent, Student) is required."),
   biaya: z.string().min(1, "Cost information is required."),
   komentar: z.string().min(10, "Comment must be at least 10 characters.").max(1000, "Comment cannot exceed 1000 characters."),
-  kenyamanan: z.number().min(1, "Rating is required.").max(5, "Rating must be between 1 and 5."), // Direct number, not array
+  kenyamanan: z.number().min(1, "Rating is required.").max(5, "Rating must be between 1 and 5."),
   pembelajaran: z.number().min(1, "Rating is required.").max(5, "Rating must be between 1 and 5."),
   fasilitas: z.number().min(1, "Rating is required.").max(5, "Rating must be between 1 and 5."),
   kepemimpinan: z.number().min(1, "Rating is required.").max(5, "Rating must be between 1 and 5."),
 });
 
-export default function AddReviewForm({ schoolId }: AddReviewFormProps) {
+export default function ReviewForm({ schoolId, onReviewSubmitted, currentReview, onCancelEdit }: ReviewFormProps) { // Renamed component
   const queryClient = useQueryClient();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -54,44 +66,62 @@ export default function AddReviewForm({ schoolId }: AddReviewFormProps) {
     },
   });
 
-  const addReviewMutation = useMutation({
-    mutationFn: async (newReview: z.infer<typeof formSchema>) => {
-      // IMPORTANT: Your `Review` schema requires `userId`.
-      // If `next-auth` session is not active or `userId` is not sent from frontend,
-      // your backend API needs to handle assigning `userId` (e.g., to a guest user)
-      // or ensure the user is authenticated to get `session.user.id`.
-      // The API route should ideally get userId from the session on the server.
-      const res = await fetch(`/api/schools/${schoolId}/reviews`, {
-        method: "POST",
+  useEffect(() => {
+    if (currentReview) {
+      form.reset({
+        name: currentReview.name || "",
+        role: currentReview.role || "",
+        biaya: currentReview.biaya || "",
+        komentar: currentReview.komentar,
+        kenyamanan: currentReview.kenyamanan,
+        pembelajaran: currentReview.pembelajaran,
+        fasilitas: currentReview.fasilitas,
+        kepemimpinan: currentReview.kepemimpinan,
+      });
+    } else {
+      form.reset();
+    }
+  }, [currentReview, form]);
+
+  const reviewMutation = useMutation({ // Renamed mutation variable for clarity
+    mutationFn: async (data: z.infer<typeof formSchema>) => {
+      const url = currentReview ? `/api/reviews/${currentReview.id}` : `/api/reviews`;
+      const method = currentReview ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method: method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newReview),
+        body: JSON.stringify({ ...data, schoolId: schoolId }),
       });
 
       if (!res.ok) {
         const errorBody = await res.json().catch(() => ({ message: 'Unknown error' }));
-        console.error("Add Review API Error:", errorBody);
-        throw new Error(errorBody.error || "Failed to add review.");
+        console.error("Review API Error:", errorBody);
+        throw new Error(errorBody.error || errorBody.message || `Failed to ${currentReview ? 'update' : 'add'} review.`);
       }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reviews", schoolId] });
-      toast.success("Review added successfully!");
+      toast.success(currentReview ? "Review updated successfully!" : "Review added successfully!");
       form.reset();
+      onReviewSubmitted();
     },
     onError: (error) => {
-      toast.error(`Error adding review: ${error.message}`);
+      toast.error(`Error ${currentReview ? 'updating' : 'adding'} review: ${error.message}`);
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    addReviewMutation.mutate(values);
+    reviewMutation.mutate(values);
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4 border rounded-lg bg-white shadow-sm">
-        <h4 className="text-xl font-semibold text-gray-800">Your Information</h4>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-6 border rounded-lg bg-white shadow-md">
+        <h4 className="text-2xl font-bold text-gray-800">{currentReview ? "Edit Your Review" : "Add Your Review"}</h4>
+        <p className="text-sm text-gray-600">{currentReview ? "Make changes to your existing review." : "Share your experience about this school."}</p>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -121,7 +151,7 @@ export default function AddReviewForm({ schoolId }: AddReviewFormProps) {
                   <SelectContent>
                     <SelectItem value="Parent">Parent</SelectItem>
                     <SelectItem value="Student">Student</SelectItem>
-                    <SelectItem value="Alumni">Alumni</SelectItem>
+                    <SelectItem value="Alumni">AlSelectItem</SelectItem>
                     <SelectItem value="Teacher">Teacher</SelectItem>
                     <SelectItem value="Other">Other</SelectItem>
                   </SelectContent>
@@ -145,7 +175,7 @@ export default function AddReviewForm({ schoolId }: AddReviewFormProps) {
           />
         </div>
 
-        <h4 className="text-xl font-semibold text-gray-800 pt-4 border-t border-gray-100">Your Review</h4>
+        <h4 className="text-xl font-semibold text-gray-800 pt-4 border-t border-gray-100">Your Detailed Feedback</h4>
         <FormField
           control={form.control}
           name="komentar"
@@ -162,7 +192,6 @@ export default function AddReviewForm({ schoolId }: AddReviewFormProps) {
 
         <h4 className="text-xl font-semibold text-gray-800 pt-4 border-t border-gray-100">Ratings (1 = Poor, 5 = Excellent)</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Rating: Kenyamanan */}
           <FormField
             control={form.control}
             name="kenyamanan"
@@ -176,7 +205,6 @@ export default function AddReviewForm({ schoolId }: AddReviewFormProps) {
               </FormItem>
             )}
           />
-          {/* Rating: Pembelajaran */}
           <FormField
             control={form.control}
             name="pembelajaran"
@@ -190,7 +218,6 @@ export default function AddReviewForm({ schoolId }: AddReviewFormProps) {
               </FormItem>
             )}
           />
-          {/* Rating: Fasilitas */}
           <FormField
             control={form.control}
             name="fasilitas"
@@ -204,7 +231,6 @@ export default function AddReviewForm({ schoolId }: AddReviewFormProps) {
               </FormItem>
             )}
           />
-          {/* Rating: Kepemimpinan */}
           <FormField
             control={form.control}
             name="kepemimpinan"
@@ -220,9 +246,21 @@ export default function AddReviewForm({ schoolId }: AddReviewFormProps) {
           />
         </div>
 
-        <Button type="submit" className="w-full mt-8 bg-primary hover:bg-primary-dark" disabled={addReviewMutation.isPending}>
-          {addReviewMutation.isPending ? "Submitting..." : "Submit Review"}
-        </Button>
+        <div className="flex justify-end space-x-2"> {/* Added div for buttons */}
+          {currentReview && ( // Show Cancel button only in edit mode
+            <Button
+              type="button" // Important: type "button" to prevent form submission
+              variant="outline"
+              onClick={onCancelEdit}
+              disabled={reviewMutation.isPending}
+            >
+              Cancel
+            </Button>
+          )}
+          <Button type="submit" className="w-auto bg-primary hover:bg-primary-dark" disabled={reviewMutation.isPending}>
+            {reviewMutation.isPending ? (currentReview ? "Updating..." : "Submitting...") : (currentReview ? "Update Review" : "Submit Review")}
+          </Button>
+        </div>
       </form>
     </Form>
   );

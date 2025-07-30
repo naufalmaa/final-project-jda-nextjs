@@ -8,16 +8,22 @@ import { School } from "@/lib/types"; // Assuming you have a School type defined
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator"; // Assuming you have a Separator component (or use a div with border-b)
+import { Separator } from "@/components/ui/separator";
 import EditSchoolForm from "./EditSchoolForm";
-import SchoolMap from "@/components/dashboard/SchoolMap";
 import { useSession } from "next-auth/react"; // To check user role
+import dynamic from 'next/dynamic'; // NEW: Import dynamic from next/dynamic
+
+// Dynamically import SchoolMap with SSR disabled
+const DynamicSchoolMap = dynamic(() => import('@/components/dashboard/SchoolMap'), {
+  ssr: false, // This is the crucial part: prevents SSR for this component
+  loading: () => <p>Loading map...</p>, // Optional: A loading placeholder
+});
 
 interface SchoolDetailProps {
-  schoolId: string;
+  schoolId: number;
 }
 
-const fetchSchoolById = async (schoolId: string): Promise<School> => {
+const fetchSchoolById = async (schoolId: number): Promise<School> => {
   const res = await fetch(`/api/schools/${schoolId}`);
   if (!res.ok) {
     throw new Error("Failed to fetch school details");
@@ -26,8 +32,8 @@ const fetchSchoolById = async (schoolId: string): Promise<School> => {
 };
 
 export default function SchoolDetail({ schoolId }: SchoolDetailProps) {
-//   const { data: session } = useSession();
-//   const isAdmin = session?.user?.role === "ADMIN";
+  const { data: session } = useSession(); // Use useSession for client-side access to session
+  const isAdminOrSuperadmin = session?.user?.role === "ADMIN" || session?.user?.role === "SUPERADMIN"; // Check for both roles
 
   const {
     data: school,
@@ -71,7 +77,8 @@ export default function SchoolDetail({ schoolId }: SchoolDetailProps) {
         <h2 className="text-4xl font-extrabold text-gray-900">{school.name}</h2>
         <div className="gap-4 flex items-center">
         {
-        // isAdmin && 
+        // Only show edit button for ADMIN or SUPERADMIN
+        isAdminOrSuperadmin &&
         (
           <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
             <DialogTrigger asChild>
@@ -120,7 +127,8 @@ export default function SchoolDetail({ schoolId }: SchoolDetailProps) {
             {/* School Map Integration */}
             {school.lat && school.lng && (
               <div className="w-full h-64 md:h-full min-h-[200px] rounded-lg overflow-hidden shadow-md border border-gray-200">
-                <SchoolMap lat={school.lat} lng={school.lng} schoolName={school.name} />
+                {/* Use the dynamically imported map component */}
+                <DynamicSchoolMap lat={school.lat} lng={school.lng} schoolName={school.name} />
               </div>
             )}
             {(!school.lat || !school.lng) && (

@@ -1,22 +1,19 @@
-// app/dashboard/layout.tsx
-// "use client";
+// File: app/dashboard/layout.tsx
 
-import { ReactNode, useState } from "react";
-// import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+"use client"; // This is still a client component because Sidebar might be interactive
+
+import { ReactNode } from "react";
 import Sidebar from "@/components/layout/Sidebar";
-import { QueryProvider } from "./QueryProvider";
-import "@/app/globals.css"; // Ensure global styles are applied
 
 
+// No longer needs to accept a `session` prop
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
-    <QueryProvider>
-      <div className="flex h-screen">
-        <Sidebar />
-        <main className="flex-1 bg-gray-50 overflow-auto">
-          {children}
-        </main>
-      </div>
-    </QueryProvider>
+    <div className="flex h-screen">
+      <Sidebar />
+      <main className="flex-1 bg-gray-50 overflow-auto">
+        {children}
+      </main>
+    </div>
   );
 }

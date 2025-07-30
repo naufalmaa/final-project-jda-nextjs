@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,27 +8,22 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?   // For email/password auth
-  passwordHash  String?   // Hashed Password
-  role          Role      @default(USER)
-  
-  // For school_admin assignment
+  id               String    @id @default(cuid())
+  name             String?
+  email            String    @unique
+  emailVerified    DateTime?
+  image            String?
+  password         String?
+  role             Role      @default(USER)
   assignedSchoolId Int?
-  assignedSchool   School? @relation("SchoolAdmin", fields: [assignedSchoolId], references: [id])
-  
-  // Relations
-  accounts      Account[]
-  sessions      Session[]
-  reviews       Review[]
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  passwordHash     String?
+  reviews          Review[]
+  accounts         Account[]
+  sessions         Session[]
+  assignedSchool   School?   @relation("SchoolAdmin", fields: [assignedSchoolId], references: [id])
+
   @@map("users")
 }
 
@@ -41,15 +33,14 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@map("accounts")
@@ -74,60 +65,50 @@ model VerificationToken {
   @@map("verificationtokens")
 }
 
+model School {
+  id           Int      @id @default(autoincrement())
+  name         String
+  status       String
+  npsn         String
+  bentuk       String
+  telp         String
+  alamat       String
+  kelurahan    String
+  kecamatan    String
+  lat          Float?
+  lng          Float?
+  achievements String?
+  contact      String?
+  description  String?
+  programs     String?
+  website      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  reviews      Review[]
+  admins       User[]   @relation("SchoolAdmin")
+}
+
+model Review {
+  id           Int      @id @default(autoincrement())
+  schoolId     Int
+  name         String
+  role         String
+  biaya        String
+  komentar     String
+  tanggal      DateTime @default(now())
+  kenyamanan   Int
+  pembelajaran Int
+  fasilitas    Int
+  kepemimpinan Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  userId       String
+  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 enum Role {
   USER
   SCHOOL_ADMIN
   SUPERADMIN
-}
-
-model School {
-  id         Int      @id @default(autoincrement())
-  name       String
-  status     String
-  npsn       String
-  bentuk     String
-  telp       String
-  alamat     String
-  kelurahan  String
-  kecamatan  String
-  lat        Float?   // nullable
-  lng        Float?   // nullable
-  
-  // New editable fields:
-  description   String?  @db.Text
-  programs      String?  @db.Text
-  achievements  String?  @db.Text
-  website       String?
-  contact       String?
-
-  // Relations
-  reviews       Review[]
-  admins        User[]   @relation("SchoolAdmin")
-  
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-model Review {
-  id            Int      @id @default(autoincrement())
-  schoolId      Int
-  userId        String   // Link to user who created the review
-  name          String
-  role          String
-  biaya         String
-  komentar      String
-  tanggal       DateTime @default(now())
-
-  // Rating Parameters
-  kenyamanan    Int
-  pembelajaran  Int
-  fasilitas     Int
-  kepemimpinan  Int
-
-  // Relations
-  school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
 }

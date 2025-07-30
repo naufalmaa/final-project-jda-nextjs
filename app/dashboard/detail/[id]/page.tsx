@@ -3,19 +3,19 @@
 import React from "react";
 import SchoolDetail from "@/components/dashboard/SchoolDetail";
 import ReviewList from "@/components/dashboard/ReviewList";
-import AddReviewForm from "@/components/dashboard/AddReviewForm";
+// REMOVE: import AddReviewForm from "@/components/dashboard/AddReviewForm"; // Remove this import
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button"; // Assuming you might want a back button or similar
-import Link from "next/link"; // For navigation, e.g., a back button
-import { getServerSession } from "next-auth/next"; // To conditionally render AddReviewForm
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // Import authOptions
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export default async function DetailPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const { id } = params; // No need to await params here, it's already available
+  const schoolId = parseInt(params.id, 10);
   const session = await getServerSession(authOptions); // Fetch session for conditional rendering
 
   return (
@@ -24,45 +24,38 @@ export default async function DetailPage({
         {/* Back Button (Optional) */}
         <div className="mb-6">
           <Button variant="outline" asChild>
-            <Link href="/dashboard/list">← Back to Schools</Link>
+            <Link href="/dashboard">← Back to Dashboard</Link>
           </Button>
         </div>
 
         {/* School Details Section */}
-        <Card className="shadow-lg border-t-4 border-primary rounded-lg overflow-hidden">
-          <CardHeader className="bg-primary/5 p-6 border-b border-gray-200">
-            <CardTitle className="text-3xl font-extrabold text-primary-dark">School Information</CardTitle>
-            <CardDescription className="text-gray-700 mt-2">Detailed view of the elementary school.</CardDescription>
-          </CardHeader>
-          <CardContent className="p-6">
-            {/* The SchoolDetail component will fetch and display school-specific data */}
-            <SchoolDetail schoolId={id} />
-          </CardContent>
-        </Card>
+        <SchoolDetail schoolId={schoolId} />
 
-        {/* Reviews Section */}
-        <Card className="shadow-lg border-t-4 border-accent rounded-lg overflow-hidden">
-          <CardHeader className="bg-accent/5 p-6 border-b border-gray-200">
+        {/* Parent Reviews Section (now includes the Add Review Form toggle) */}
+        <Card className="shadow-lg rounded-lg overflow-hidden bg-white">
+          <CardHeader className="pb-4 border-b border-gray-200">
             <CardTitle className="text-3xl font-extrabold text-secondary-dark">Parent Reviews</CardTitle>
             <CardDescription className="text-gray-700 mt-2">What parents are saying about this school.</CardDescription>
           </CardHeader>
           <CardContent className="p-6">
-            <h3 className="text-2xl font-semibold mb-6 text-gray-800">All Reviews</h3>
-            {/* The ReviewList component will fetch and display reviews */}
-            <ReviewList schoolId={id} />
+            {/* The ReviewList component now handles both displaying reviews and the Add Review form */}
+            {/* We no longer pass userId and userRole directly to ReviewList because it fetches session internally */}
+            <ReviewList schoolId={schoolId} />
 
-            {/* Add Review Form - only shown if user is signed in */}
+            {/* REMOVED: Old Add Review Form Section */}
+            {/*
             {session?.user && (
               <div className="mt-10 pt-8 border-t border-gray-200">
                 <h3 className="text-2xl font-semibold mb-6 text-gray-800">Add Your Review</h3>
-                <AddReviewForm schoolId={id} />
+                <AddReviewForm schoolId={schoolId} />
               </div>
             )}
+            */}
             {!session?.user && (
               <div className="mt-10 pt-8 border-t border-gray-200 text-center text-gray-600">
                 <p className="mb-4">
-                  <Link href="/auth/sign-in" className="text-primary hover:underline font-medium">Sign in</Link> or {" "}
-                  <Link href="/auth/sign-up" className="text-primary hover:underline font-medium">Sign up</Link> to leave a review.
+                  <Link href="/auth/signin" className="text-primary hover:underline font-medium">Sign in</Link> or {" "}
+                  <Link href="/auth/signup" className="text-primary hover:underline font-medium">Sign up</Link> to add your review!
                 </p>
               </div>
             )}
