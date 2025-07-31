@@ -1,5 +1,4 @@
-// File: components/dashboard/ReviewForm.tsx (renamed from AddReviewForm.tsx)
-
+// File: components/dashboard/ReviewForm.tsx
 "use client";
 
 import React, { useEffect } from "react";
@@ -31,11 +30,10 @@ interface ReviewWithUser extends Review {
   };
 }
 
-interface ReviewFormProps { // Renamed from AddReviewFormProps
+interface ReviewFormProps {
   schoolId: number;
   onReviewSubmitted: () => void;
-  currentReview?: ReviewWithUser | null; // Optional prop for editing
-  onCancelEdit?: () => void; // NEW: Callback for when editing is cancelled
+  currentReview?: ReviewWithUser | null; // Optional: for editing existing review
 }
 
 const formSchema = z.object({
@@ -49,7 +47,7 @@ const formSchema = z.object({
   kepemimpinan: z.number().min(1, "Rating is required.").max(5, "Rating must be between 1 and 5."),
 });
 
-export default function ReviewForm({ schoolId, onReviewSubmitted, currentReview, onCancelEdit }: ReviewFormProps) { // Renamed component
+export default function ReviewForm({ schoolId, onReviewSubmitted, currentReview }: ReviewFormProps) {
   const queryClient = useQueryClient();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -66,6 +64,7 @@ export default function ReviewForm({ schoolId, onReviewSubmitted, currentReview,
     },
   });
 
+  // Populate form fields if editing an existing review
   useEffect(() => {
     if (currentReview) {
       form.reset({
@@ -79,11 +78,21 @@ export default function ReviewForm({ schoolId, onReviewSubmitted, currentReview,
         kepemimpinan: currentReview.kepemimpinan,
       });
     } else {
-      form.reset();
+      // Reset to default values for a new review
+      form.reset({
+        name: "",
+        role: "",
+        biaya: "",
+        komentar: "",
+        kenyamanan: 3,
+        pembelajaran: 3,
+        fasilitas: 3,
+        kepemimpinan: 3,
+      });
     }
   }, [currentReview, form]);
 
-  const reviewMutation = useMutation({ // Renamed mutation variable for clarity
+  const reviewMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
       const url = currentReview ? `/api/reviews/${currentReview.id}` : `/api/reviews`;
       const method = currentReview ? "PUT" : "POST";
@@ -104,8 +113,8 @@ export default function ReviewForm({ schoolId, onReviewSubmitted, currentReview,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reviews", schoolId] });
       toast.success(currentReview ? "Review updated successfully!" : "Review added successfully!");
-      form.reset();
-      onReviewSubmitted();
+      form.reset(); // Reset form after successful submission
+      onReviewSubmitted(); // Close the modal
     },
     onError: (error) => {
       toast.error(`Error ${currentReview ? 'updating' : 'adding'} review: ${error.message}`);
@@ -118,9 +127,13 @@ export default function ReviewForm({ schoolId, onReviewSubmitted, currentReview,
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-6 border rounded-lg bg-white shadow-md">
-        <h4 className="text-2xl font-bold text-gray-800">{currentReview ? "Edit Your Review" : "Add Your Review"}</h4>
-        <p className="text-sm text-gray-600">{currentReview ? "Make changes to your existing review." : "Share your experience about this school."}</p>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-1"> {/* Adjusted padding */}
+        <p className="text-sm text-gray-600">
+          {currentReview
+            ? "Make changes to your existing review."
+            : "Share your experience about this school."
+          }
+        </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
@@ -151,7 +164,7 @@ export default function ReviewForm({ schoolId, onReviewSubmitted, currentReview,
                   <SelectContent>
                     <SelectItem value="Parent">Parent</SelectItem>
                     <SelectItem value="Student">Student</SelectItem>
-                    <SelectItem value="Alumni">AlSelectItem</SelectItem>
+                    <SelectItem value="Alumni">Alumni</SelectItem>
                     <SelectItem value="Teacher">Teacher</SelectItem>
                     <SelectItem value="Other">Other</SelectItem>
                   </SelectContent>
@@ -246,17 +259,16 @@ export default function ReviewForm({ schoolId, onReviewSubmitted, currentReview,
           />
         </div>
 
-        <div className="flex justify-end space-x-2"> {/* Added div for buttons */}
-          {currentReview && ( // Show Cancel button only in edit mode
-            <Button
-              type="button" // Important: type "button" to prevent form submission
-              variant="outline"
-              onClick={onCancelEdit}
-              disabled={reviewMutation.isPending}
-            >
-              Cancel
-            </Button>
-          )}
+        <div className="flex justify-end space-x-3 mt-8">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onReviewSubmitted} // This will close the modal
+            disabled={reviewMutation.isPending}
+            className="text-gray-700 hover:bg-gray-100"
+          >
+            Cancel
+          </Button>
           <Button type="submit" className="w-auto bg-primary hover:bg-primary-dark" disabled={reviewMutation.isPending}>
             {reviewMutation.isPending ? (currentReview ? "Updating..." : "Submitting...") : (currentReview ? "Update Review" : "Submit Review")}
           </Button>

@@ -1,15 +1,13 @@
 // File: components/ui/star-rating-input.tsx
-
-"use client";
-
-import React, { useState } from "react";
-import { cn } from "@/lib/utils"; // Assuming you have shadcn's cn utility
+import React from "react";
+import { StarFilledIcon, StarIcon } from "@radix-ui/react-icons"; // Import both filled and outline
 
 interface StarRatingInputProps {
-  value: number; // Current rating (1-5)
-  onChange: (rating: number) => void;
-  maxStars?: number; // Total number of stars, default 5
+  value: number;
+  onChange: (value: number) => void;
+  maxStars?: number;
   className?: string;
+  disabled?: boolean;
 }
 
 export const StarRatingInput: React.FC<StarRatingInputProps> = ({
@@ -17,30 +15,28 @@ export const StarRatingInput: React.FC<StarRatingInputProps> = ({
   onChange,
   maxStars = 5,
   className,
+  disabled = false,
 }) => {
-  const [hoverValue, setHoverValue] = useState<number | null>(null);
+  const stars = Array.from({ length: maxStars }, (_, index) => {
+    const starValue = index + 1;
+    return (
+      <button
+        key={index}
+        type="button"
+        onClick={() => !disabled && onChange(starValue)}
+        className={`focus:outline-none ${disabled ? "cursor-not-allowed" : "cursor-pointer"}
+          ${className || ""}`}
+        disabled={disabled}
+      >
+        {/* Render filled star if current star value is less than or equal to the selected value */}
+        {starValue <= value ? (
+          <StarFilledIcon className="h-6 w-6 text-yellow-500 transition-colors duration-200" />
+        ) : (
+          <StarIcon className="h-6 w-6 text-gray-300 transition-colors duration-200" /> // Use gray outline for unselected
+        )}
+      </button>
+    );
+  });
 
-  const displayValue = hoverValue !== null ? hoverValue : value;
-
-  return (
-    <div className={cn("flex space-x-0.5", className)}>
-      {[...Array(maxStars)].map((_, index) => {
-        const starValue = index + 1;
-        return (
-          <span
-            key={index}
-            className={cn(
-              "cursor-pointer text-3xl transition-colors duration-100",
-              displayValue >= starValue ? "text-yellow-500" : "text-gray-300"
-            )}
-            onClick={() => onChange(starValue)}
-            onMouseEnter={() => setHoverValue(starValue)}
-            onMouseLeave={() => setHoverValue(null)}
-          >
-            ★
-          </span>
-        );
-      })}
-    </div>
-  );
+  return <div className="flex items-center space-x-1">{stars}</div>;
 };

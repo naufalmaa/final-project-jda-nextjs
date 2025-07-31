@@ -3,12 +3,13 @@
 import React from "react";
 import SchoolDetail from "@/components/dashboard/SchoolDetail";
 import ReviewList from "@/components/dashboard/ReviewList";
-// REMOVE: import AddReviewForm from "@/components/dashboard/AddReviewForm"; // Remove this import
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
+
 
 export default async function DetailPage({
   params,
@@ -16,14 +17,14 @@ export default async function DetailPage({
   params: { id: string };
 }) {
   const schoolId = parseInt(params.id, 10);
-  const session = await getServerSession(authOptions); // Fetch session for conditional rendering
+  const session = await getServerSession(authOptions);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 lg:p-12">
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Back Button (Optional) */}
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Back Button */}
         <div className="mb-6">
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className="hover:bg-gray-100 transition-colors">
             <Link href="/dashboard">← Back to Dashboard</Link>
           </Button>
         </div>
@@ -31,32 +32,42 @@ export default async function DetailPage({
         {/* School Details Section */}
         <SchoolDetail schoolId={schoolId} />
 
-        {/* Parent Reviews Section (now includes the Add Review Form toggle) */}
-        <Card className="shadow-lg rounded-lg overflow-hidden bg-white">
-          <CardHeader className="pb-4 border-b border-gray-200">
-            <CardTitle className="text-3xl font-extrabold text-secondary-dark">Parent Reviews</CardTitle>
-            <CardDescription className="text-gray-700 mt-2">What parents are saying about this school.</CardDescription>
+        {/* Reviews Section */}
+        <Card className="shadow-lg rounded-xl overflow-hidden bg-white border-0 mt-6">
+          <CardHeader className="pb-6 border-b border-gray-100">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="space-y-2">
+                <CardTitle className="text-3xl font-bold text-gray-900">
+                  Reviews
+                </CardTitle>
+                <CardDescription className="text-gray-600 text-lg mt-2">
+                  What people are saying about this school?
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className="p-6">
-            {/* The ReviewList component now handles both displaying reviews and the Add Review form */}
-            {/* We no longer pass userId and userRole directly to ReviewList because it fetches session internally */}
+          <CardContent className="p-8">
             <ReviewList schoolId={schoolId} />
 
-            {/* REMOVED: Old Add Review Form Section */}
-            {/*
-            {session?.user && (
-              <div className="mt-10 pt-8 border-t border-gray-200">
-                <h3 className="text-2xl font-semibold mb-6 text-gray-800">Add Your Review</h3>
-                <AddReviewForm schoolId={schoolId} />
-              </div>
-            )}
-            */}
+            {/* Sign in prompt for non-authenticated users */}
             {!session?.user && (
-              <div className="mt-10 pt-8 border-t border-gray-200 text-center text-gray-600">
-                <p className="mb-4">
-                  <Link href="/auth/signin" className="text-primary hover:underline font-medium">Sign in</Link> or {" "}
-                  <Link href="/auth/signup" className="text-primary hover:underline font-medium">Sign up</Link> to add your review!
-                </p>
+              <div className="mt-12 pt-8 border-t border-gray-200 text-center">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-8 border border-blue-100">
+                  <h3 className="text-xl font-semibold text-gray-800 mb-3">
+                    Share Your Experience
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    Help other parents and students by sharing your review of this school.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <Button asChild variant="default" className="bg-blue-600 hover:bg-blue-700">
+                      <Link href="/auth/signin">Sign In</Link>
+                    </Button>
+                    <Button asChild variant="outline" className="border-blue-200 text-blue-700 hover:bg-blue-50">
+                      <Link href="/auth/signup">Create Account</Link>
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
           </CardContent>

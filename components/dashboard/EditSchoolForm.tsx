@@ -1,13 +1,11 @@
 // File: components/dashboard/EditSchoolForm.tsx
-
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { School } from "@/lib/types"; // Assuming School type
 import {
   Form,
   FormControl,
@@ -18,73 +16,90 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea"; // For multiline text fields
-import { toast } from "sonner"; // Assuming you use sonner for toasts
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { School } from "@prisma/client";
 
 interface EditSchoolFormProps {
-  school: School;
-  onClose: () => void;
+  schoolData: School;
+  onFormSubmitted: () => void;
 }
 
-// Define the schema for validation
 const formSchema = z.object({
   name: z.string().min(1, "School name is required."),
   status: z.string().min(1, "Status is required."),
   npsn: z.string().min(1, "NPSN is required."),
   bentuk: z.string().min(1, "Bentuk is required."),
-  telp: z.string().nullable(),
+  telp: z.string().optional(),
   alamat: z.string().min(1, "Address is required."),
-  kelurahan: z.string().min(1, "Sub-district is required."),
-  kecamatan: z.string().min(1, "District is required."),
-  description: z.string().nullable(),
-  programs: z.string().nullable(),
-  achievements: z.string().nullable(),
-  website: z.string().url("Invalid URL format.").nullable().or(z.literal("")),
-  contact: z.string().nullable(),
-  // lat and lng are typically not directly editable via text input unless it's a map picker
-  // For now, assume they are not directly editable here or are handled by a separate map component
+  kelurahan: z.string().min(1, "Kelurahan is required."),
+  kecamatan: z.string().min(1, "Kecamatan is required."),
+  lat: z.number().optional().nullable(),
+  lng: z.number().optional().nullable(),
+  achievements: z.string().optional(),
+  contact: z.string().optional(),
+  description: z.string().optional(),
+  programs: z.string().optional(),
+  website: z.string().url("Invalid URL format").optional().or(z.literal('')),
 });
 
-export default function EditSchoolForm({ school, onClose }: EditSchoolFormProps) {
+export default function EditSchoolForm({ schoolData, onFormSubmitted }: EditSchoolFormProps) {
   const queryClient = useQueryClient();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: school.name || "",
-      status: school.status || "",
-      npsn: school.npsn || "",
-      bentuk: school.bentuk || "",
-      telp: school.telp || "",
-      alamat: school.alamat || "",
-      kelurahan: school.kelurahan || "",
-      kecamatan: school.kecamatan || "",
-      description: school.description || "",
-      programs: school.programs || "",
-      achievements: school.achievements || "",
-      website: school.website || "",
-      contact: school.contact || "",
+      name: schoolData.name || "",
+      status: schoolData.status || "",
+      npsn: schoolData.npsn || "",
+      bentuk: schoolData.bentuk || "",
+      telp: schoolData.telp || "",
+      alamat: schoolData.alamat || "",
+      kelurahan: schoolData.kelurahan || "",
+      kecamatan: schoolData.kecamatan || "",
+      lat: schoolData.lat || null,
+      lng: schoolData.lng || null,
+      achievements: Array.isArray(schoolData.achievements) ? schoolData.achievements.join("\n") : (schoolData.achievements || ""),
+      contact: schoolData.contact || "", // Ensure default is null if empty string
+      description: schoolData.description || "",
+      programs: Array.isArray(schoolData.programs) ? schoolData.programs.join("\n") : (schoolData.programs || ""),
+      website: schoolData.website || "", // Ensure default is null if empty string
     },
   });
 
   const updateSchoolMutation = useMutation({
-    mutationFn: async (updatedData: Partial<School>) => {
-      const res = await fetch(`/api/schools/${school.id}`, {
+    mutationFn: async (updatedData: z.infer<typeof formSchema>) => {
+      const dataToSend = {
+        ...updatedData,
+        achievements: updatedData.achievements || "", // Send as string or null
+        programs: updatedData.programs || "", // Send as string or null
+        // Convert lat and lng to numbers, handling null/empty string cases
+        lat: updatedData.lat === '' ? null : (typeof updatedData.lat === 'string' ? parseFloat(updatedData.lat) : updatedData.lat),
+        lng: updatedData.lng === '' ? null : (typeof updatedData.lng === 'string' ? parseFloat(updatedData.lng) : updatedData.lng),
+          // Ensure optional string fields are null if empty string
+        telp: updatedData.telp || "",
+        contact: updatedData.contact || "",
+        website: updatedData.website || "",
+      };
+
+      const res = await fetch(`/api/schools/${schoolData.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedData),
+        body: JSON.stringify(dataToSend),
       });
 
       if (!res.ok) {
-        const errorBody = await res.json();
-        throw new Error(errorBody.error || "Failed to update school.");
+        const errorBody = await res.json().catch(() => ({ message: 'Unknown error' }));
+        console.error("Update School API Error:", errorBody);
+        throw new Error(errorBody.error || errorBody.message || "Failed to update school.");
       }
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["school", school.id] });
+      queryClient.invalidateQueries({ queryKey: ["school", schoolData.id] });
       toast.success("School details updated successfully!");
-      onClose();
+      onFormSubmitted();
     },
     onError: (error) => {
       toast.error(`Error updating school: ${error.message}`);
@@ -96,198 +111,341 @@ export default function EditSchoolForm({ school, onClose }: EditSchoolFormProps)
   }
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* General Information */}
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>School Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter school name" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="status"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Status</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g., Negeri, Swasta" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="npsn"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>NPSN</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter NPSN" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="bentuk"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Bentuk (Form)</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g., SD" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="telp"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Telephone</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter phone number" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="website"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Website URL</FormLabel>
-                <FormControl>
-                  <Input placeholder="https://www.example.com" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="contact"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Contact Person Info</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g., John Doe - Head of Admissions" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+    <div className="px-6 pb-6">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          {/* Basic Information Section */}
+          <div className="space-y-6">
+            <div className="border-b border-gray-200 pb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Basic Information</h3>
+              <p className="text-sm text-gray-600 mt-1">Essential details about the school</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 mt-3">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem className="lg:col-span-2 mb-6"> {/* Added mb-6 */}
+                    <FormLabel className="text-sm font-medium text-gray-700">School Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} className="mt-1" placeholder="Enter school name" />
+                    </FormControl>
+                    <FormMessage className="min-h-[20px] pt-1" /> {/* Added min-h and pt */}
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="npsn"
+                render={({ field }) => (
+                  <FormItem className="mb-6"> {/* Added mb-6 */}
+                    <FormLabel className="text-sm font-medium text-gray-700">NPSN</FormLabel>
+                    <FormControl>
+                      <Input {...field} className="mt-1" placeholder="Enter NPSN" />
+                    </FormControl>
+                    <FormMessage className="min-h-[20px] pt-1" /> {/* Added min-h and pt */}
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem className="mb-6"> {/* Added mb-6 */}
+                    <FormLabel className="text-sm font-medium text-gray-700">Status</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="mt-1 w-full">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Negeri">Negeri</SelectItem>
+                        <SelectItem value="Swasta">Swasta</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage className="min-h-[20px] pt-1" /> {/* Added min-h and pt */}
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="bentuk"
+                render={({ field }) => (
+                  <FormItem className="mb-6"> {/* Added mb-6 */}
+                    <FormLabel className="text-sm font-medium text-gray-700">Bentuk</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="mt-1 w-full">
+                          <SelectValue placeholder="Select bentuk" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="SD">SD</SelectItem>
+                        {/* <SelectItem value="SMP">SMP</SelectItem>
+                        <SelectItem value="SMA">SMA</SelectItem>
+                        <SelectItem value="SMK">SMK</SelectItem> */}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage className="min-h-[20px] pt-1" /> {/* Added min-h and pt */}
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="telp"
+                render={({ field }) => (
+                  <FormItem className="mb-6"> {/* Added mb-6 */}
+                    <FormLabel className="text-sm font-medium text-gray-700">Telephone</FormLabel>
+                    <FormControl>
+                      <Input {...field} className="mt-1" placeholder="Enter phone number" />
+                    </FormControl>
+                    <FormMessage className="min-h-[20px] pt-1" /> {/* Added min-h and pt */}
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
 
-        {/* Location Details */}
-        <h3 className="text-xl font-semibold text-gray-700 pt-4 border-t border-gray-100">Location</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="alamat"
-            render={({ field }) => (
-              <FormItem className="md:col-span-2">
-                <FormLabel>Address</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter full address" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="kelurahan"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Sub-District (Kelurahan)</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter sub-district" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="kecamatan"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>District (Kecamatan)</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter district" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+          {/* Contact Information Section */}
+          <div className="space-y-6 mt-6">
+            <div className="border-b border-gray-200 pb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
+              <p className="text-sm text-gray-600 mt-1">Contact details and online presence</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 mt-3">
+              <FormField
+                control={form.control}
+                name="contact"
+                render={({ field }) => (
+                  <FormItem className="mb-6"> {/* Added mb-6 */}
+                    <FormLabel className="text-sm font-medium text-gray-700">Contact Person</FormLabel>
+                    <FormControl>
+                      <Input {...field} className="mt-1" placeholder="Enter contact person name" />
+                    </FormControl>
+                    <FormMessage className="min-h-[20px] pt-1" /> {/* Added min-h and pt */}
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="website"
+                render={({ field }) => (
+                  <FormItem className="mb-6"> {/* Added mb-6 */}
+                    <FormLabel className="text-sm font-medium text-gray-700">Website</FormLabel>
+                    <FormControl>
+                      <Input {...field} className="mt-1" placeholder="https://www.example.com" />
+                    </FormControl>
+                    <FormMessage className="min-h-[20px] pt-1" /> {/* Added min-h and pt */}
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
 
-        {/* Extended Information (Textareas for larger content) */}
-        <h3 className="text-xl font-semibold text-gray-700 pt-4 border-t border-gray-100">Additional Information</h3>
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Provide a brief description of the school..." {...field} rows={4} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="programs"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Programs Offered</FormLabel>
-              <FormControl>
-                <Textarea placeholder="List academic programs, extracurricular activities, etc." {...field} rows={4} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="achievements"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Achievements</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Highlight awards, recognitions, or notable achievements." {...field} rows={4} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          {/* Location Information Section */}
+          <div className="space-y-6 mt-6">
+            <div className="border-b border-gray-200 pb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Location Information</h3>
+              <p className="text-sm text-gray-600 mt-1">Address and geographical details</p>
+            </div>
+            
+            <div className="space-y-6"> {/* This space-y-6 will handle vertical spacing between the address textarea and the grid below */}
+              <FormField
+                control={form.control}
+                name="alamat"
+                render={({ field }) => (
+                  <FormItem className="mb-6"> {/* Added mb-6 */}
+                    <FormLabel className="text-sm font-medium text-gray-700">Address</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} className="mt-1" rows={2} placeholder="Enter complete address" />
+                    </FormControl>
+                    <FormMessage className="min-h-[20px] pt-1" /> {/* Added min-h and pt */}
+                  </FormItem>
+                )}
+              />
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6"> {/* Changed gap-6 to gap-x-6 */}
+                <FormField
+                  control={form.control}
+                  name="kelurahan"
+                  render={({ field }) => (
+                    <FormItem className="mb-6"> {/* Added mb-6 */}
+                      <FormLabel className="text-sm font-medium text-gray-700">Kelurahan</FormLabel>
+                      <FormControl>
+                        <Input {...field} className="mt-1" placeholder="Enter kelurahan" />
+                      </FormControl>
+                      <FormMessage className="min-h-[20px] pt-1" /> {/* Added min-h and pt */}
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="kecamatan"
+                  render={({ field }) => (
+                    <FormItem className="mb-6"> {/* Added mb-6 */}
+                      <FormLabel className="text-sm font-medium text-gray-700">Kecamatan</FormLabel>
+                      <FormControl>
+                        <Input {...field} className="mt-1" placeholder="Enter kecamatan" />
+                      </FormControl>
+                      <FormMessage className="min-h-[20px] pt-1" /> {/* Added min-h and pt */}
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="lat"
+                  render={({ field }) => (
+                    <FormItem className="mb-6"> {/* Added mb-6 */}
+                      <FormLabel className="text-sm font-medium text-gray-700">Latitude</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="any" 
+                          {...field}
+                          className="mt-1"
+                          placeholder="e.g., -6.200000"
+                          value={field.value === null ? '' : field.value}
+                          onChange={(e) => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage className="min-h-[20px] pt-1" /> {/* Added min-h and pt */}
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="lng"
+                  render={({ field }) => (
+                    <FormItem className="mb-6"> {/* Added mb-6 */}
+                      <FormLabel className="text-sm font-medium text-gray-700">Longitude</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="any" 
+                          {...field}
+                          className="mt-1"
+                          placeholder="e.g., 106.816666"
+                          value={field.value === null ? '' : field.value}
+                          onChange={(e) => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage className="min-h-[20px] pt-1" /> {/* Added min-h and pt */}
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+          </div>
 
-        <div className="flex justify-end space-x-2 pt-6 border-t border-gray-100">
-          <Button type="button" variant="outline" onClick={onClose} disabled={updateSchoolMutation.isPending}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={updateSchoolMutation.isPending}>
-            {updateSchoolMutation.isPending ? "Saving..." : "Save Changes"}
-          </Button>
-        </div>
-      </form>
-    </Form>
+          {/* School Details Section */}
+          <div className="space-y-6 mt-6">
+            <div className="border-b border-gray-200 pb-4">
+              <h3 className="text-lg font-semibold text-gray-900">School Details</h3>
+              <p className="text-sm text-gray-600 mt-1">Additional information about the school</p>
+            </div>
+            
+            <div className="space-y-6 mt-3" > {/* This space-y-6 will handle vertical spacing between the description textarea and the grid below */}
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem className="mb-6"> {/* Added mb-6 */}
+                    <FormLabel className="text-sm font-medium text-gray-700">Description</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        {...field} 
+                        className="mt-1" 
+                        rows={6} 
+                        placeholder="Provide a detailed description of the school..."
+                      />
+                    </FormControl>
+                    <FormMessage className="min-h-[20px] pt-1" /> {/* Added min-h and pt */}
+                  </FormItem>
+                )}
+              />
+              
+              {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6"> */}
+                <FormField
+                  control={form.control}
+                  name="programs"
+                  render={({ field }) => (
+                    <FormItem className="mb-6"> {/* Added mb-6 */}
+                      <FormLabel className="text-sm font-medium text-gray-700">Programs Offered</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field} 
+                          className="mt-1" 
+                          rows={6} 
+                          placeholder="List each program this school offers"
+                          value={field.value || ''}
+                        />
+                      </FormControl>
+                      <FormMessage className="min-h-[20px] pt-1" /> {/* Added min-h and pt */}
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="achievements"
+                  render={({ field }) => (
+                    <FormItem className="mb-6"> {/* Added mb-6 */}
+                      <FormLabel className="text-sm font-medium text-gray-700">Achievements</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field} 
+                          className="mt-1" 
+                          rows={6} 
+                          placeholder="List each achievement this school has"
+                          value={field.value || ''}
+                        />
+                      </FormControl>
+                      <FormMessage className="min-h-[100px] pt-1" /> {/* Added min-h and pt */}
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+          {/* </div> */}
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4 pt-6 border-t border-gray-200">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onFormSubmitted}
+              className="text-gray-700 hover:bg-gray-50 border-gray-300 transition-colors mr-4"
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={updateSchoolMutation.isPending} 
+              className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+            >
+              {updateSchoolMutation.isPending ? (
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Saving...</span>
+                </div>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
   );
 }

@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from "react";
 import { Review } from "@prisma/client";
 import { format } from "date-fns";
-import { CalendarIcon } from "@radix-ui/react-icons";
+import { CalendarIcon, StarFilledIcon } from "@radix-ui/react-icons"; // Added StarFilledIcon
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -16,22 +16,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
-import ReviewForm from "./ReviewForm"; // CHANGED IMPORT: Use ReviewForm
+import ReviewForm from "./ReviewForm"; // Correct import
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"; // NEW IMPORT for dialog components
 
-// Define the structure of a review, including user details
 interface ReviewWithUser extends Review {
   user: {
     id: string;
@@ -40,7 +36,7 @@ interface ReviewWithUser extends Review {
   };
 }
 
-// --- API Call Functions (these should largely remain the same) ---
+// --- API Call Functions ---
 async function fetchReviewsBySchoolId(
   schoolId: number
 ): Promise<ReviewWithUser[]> {
@@ -68,8 +64,6 @@ async function deleteReview(reviewId: string) {
   return res.json();
 }
 
-// UPDATE function is now handled directly by ReviewForm's useMutation
-
 interface ReviewListProps {
   schoolId: number;
 }
@@ -82,8 +76,13 @@ const ReviewList: React.FC<ReviewListProps> = ({ schoolId }) => {
   const [reviews, setReviews] = useState<ReviewWithUser[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isAddReviewFormOpen, setIsAddReviewFormOpen] = useState(false);
-  const [editingReviewId, setEditingReviewId] = useState<string | null>(null); // State to track which review is being edited
+
+  // State for Add Review Modal
+  const [isAddReviewModalOpen, setIsAddReviewModalOpen] = useState(false);
+  // State for Edit Review Modal
+  const [isEditReviewModalOpen, setIsEditReviewModalOpen] = useState(false);
+  const [currentEditingReview, setCurrentEditingReview] = useState<ReviewWithUser | null>(null);
+
 
   const router = useRouter();
 
@@ -100,12 +99,13 @@ const ReviewList: React.FC<ReviewListProps> = ({ schoolId }) => {
       }
     };
     getReviews();
-  }, [schoolId, isAddReviewFormOpen, editingReviewId]); // Refetch when add form closes or edit form finishes
+  }, [schoolId, isAddReviewModalOpen, isEditReviewModalOpen]); // Refetch when modals close
 
-  const handleReviewAdded = () => {
-    setIsAddReviewFormOpen(false); // Close the add form
-    setEditingReviewId(null); // Ensure edit mode is off if it was somehow on
-    // reviews will refetch due to dependency array
+  const handleReviewAddedOrUpdated = () => {
+    setIsAddReviewModalOpen(false); // Close add form modal
+    setIsEditReviewModalOpen(false); // Close edit form modal
+    setCurrentEditingReview(null); // Clear editing review data
+    // Reviews will refetch due to dependency array
   };
 
   const handleDeleteReview = async (reviewId: string) => {
@@ -121,23 +121,23 @@ const ReviewList: React.FC<ReviewListProps> = ({ schoolId }) => {
     }
   };
 
-  const handleEditReview = (reviewId: string) => {
-    setEditingReviewId(reviewId); // Set the ID of the review to edit
-    setIsAddReviewFormOpen(false); // Close the add form if open
-  };
-
-  const handleCancelEdit = () => {
-    setEditingReviewId(null); // Exit edit mode
+  const handleEditReviewClick = (review: ReviewWithUser) => {
+    setCurrentEditingReview(review);
+    setIsEditReviewModalOpen(true);
   };
 
   if (loadingReviews || status === 'loading') {
     return (
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold">Reviews</h2>
-        <Skeleton className="h-10 w-48" />
+        {/* Skeleton for Review List Header */}
+        <div className="flex justify-between items-center mb-6">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-10 w-40 rounded-md" />
+        </div>
+        {/* Skeletons for individual review cards */}
         <div className="space-y-4">
-          <Skeleton className="h-[150px] w-full" />
-          <Skeleton className="h-[150px] w-full" />
+          <Skeleton className="h-[200px] w-full rounded-lg" />
+          <Skeleton className="h-[200px] w-full rounded-lg" />
         </div>
       </div>
     );
@@ -145,93 +145,87 @@ const ReviewList: React.FC<ReviewListProps> = ({ schoolId }) => {
 
   if (error) return <div>Error: {error}</div>;
 
-  const canAddReview = userRole === "USER";
+  const canAddReview = userRole === "USER"; // Only regular users can add reviews
   const canEditOrDelete = (reviewUserId: string) => userId === reviewUserId || userRole === "SUPERADMIN" || userRole === "ADMIN";
 
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold text-gray-800">Reviews</h2>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        {/* Moved title/description here for alignment */}
+        <div className="flex-1">
+          {/* <h3 className="text-2xl font-bold text-gray-800">Reviews</h3>
+          <p className="text-gray-600">What people are saying about this school?</p> */}
+        </div>
         {canAddReview && (
-          <Collapsible open={isAddReviewFormOpen} onOpenChange={setIsAddReviewFormOpen} className="w-full">
-            <div className="flex justify-end">
-              <CollapsibleTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="text-primary hover:bg-primary/10 transition-colors"
-                  onClick={() => setEditingReviewId(null)} // Ensure no review is in edit mode when opening add form
-                >
-                  {isAddReviewFormOpen ? "Close Review Form" : "Add Your Review"}
-                </Button>
-              </CollapsibleTrigger>
-            </div>
-            <CollapsibleContent className="space-y-4 data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden mt-4">
-              <ReviewForm schoolId={schoolId} onReviewSubmitted={handleReviewAdded} currentReview={null} /> {/* Always pass null for adding */}
-            </CollapsibleContent>
-          </Collapsible>
+          <Dialog open={isAddReviewModalOpen} onOpenChange={setIsAddReviewModalOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full md:w-auto text-primary hover:bg-primary/10 transition-colors"
+              >
+                Add Your Review
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[700px] p-6">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-bold">Add Your Review</DialogTitle>
+                <DialogDescription>
+                  Share your experience and help others learn about this school.
+                </DialogDescription>
+              </DialogHeader>
+              <ReviewForm schoolId={schoolId} onReviewSubmitted={handleReviewAddedOrUpdated} />
+            </DialogContent>
+          </Dialog>
         )}
       </div>
 
-      {reviews.length === 0 && !isAddReviewFormOpen && !editingReviewId ? ( // Only show message if no reviews AND no form is open
+      {reviews.length === 0 ? (
         <p className="text-gray-600 text-lg py-8 text-center">No reviews yet. Be the first to add one!</p>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4 mt-6">
           {reviews.map((review) => (
             <Card key={review.id} className="shadow-sm border-gray-200">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold text-gray-700">{review.name || review.user?.name || "Anonymous"}</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-xl font-semibold text-gray-700 leading-snug">
+                  {review.name || review.user?.name || "Anonymous"}
+                </CardTitle>
                 <CardDescription className="text-sm text-gray-500">{review.role}</CardDescription>
                 <div className="flex items-center text-xs text-muted-foreground mt-1">
                   <CalendarIcon className="mr-1 h-3 w-3" />
                   <span>{format(new Date(review.createdAt), "PPP")}</span>
                 </div>
               </CardHeader>
-              <CardContent>
-                {editingReviewId === review.id ? (
-                  // Render ReviewForm for editing if this review's ID matches editingReviewId
-                  <ReviewForm
-                    schoolId={schoolId}
-                    onReviewSubmitted={handleReviewAdded}
-                    currentReview={reviews.find(r => r.id === editingReviewId)} // Pass the full review object
-                    onCancelEdit={handleCancelEdit}
-                  />
-                ) : (
-                  // Otherwise, render the display-only view
-                  <>
-                    <p className="text-sm text-gray-600 mb-2">
-                      <strong>Biaya:</strong> {review.biaya}
-                    </p>
-                    <p className="text-base text-gray-800 leading-relaxed">{review.komentar}</p>
-                    <Accordion type="single" collapsible className="w-full mt-4">
-                      <AccordionItem value="item-1">
-                        <AccordionTrigger className="text-sm text-primary hover:no-underline">Ratings Detail</AccordionTrigger>
-                        <AccordionContent className="text-sm text-gray-700 space-y-1">
-                          <p>
-                            <strong>Kenyamanan:</strong> {review.kenyamanan}/5
-                          </p>
-                          <p>
-                            <strong>Pembelajaran:</strong> {review.pembelajaran}/5
-                          </p>
-                          <p>
-                            <strong>Fasilitas:</strong> {review.fasilitas}/5
-                          </p>
-                          <p>
-                            <strong>Kepemimpinan:</strong> {review.kepemimpinan}/5
-                          </p>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  </>
-                )}
+              <CardContent className="space-y-4">
+                <p className="text-sm text-gray-600">
+                  <strong>Cost/Biaya:</strong> {review.biaya}
+                </p>
+                <p className="text-base text-gray-800 leading-relaxed">
+                  {review.komentar}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-2 text-sm text-gray-700 mt-4 pt-4 border-t border-gray-100">
+                  {/* Display ratings with filled stars */}
+                  <p className="flex items-center gap-1">
+                    <strong>Comfort:</strong> {review.kenyamanan} <StarFilledIcon className="text-yellow-500 h-4 w-4" />
+                  </p>
+                  <p className="flex items-center gap-1">
+                    <strong>Learning:</strong> {review.pembelajaran} <StarFilledIcon className="text-yellow-500 h-4 w-4" />
+                  </p>
+                  <p className="flex items-center gap-1">
+                    <strong>Facilities:</strong> {review.fasilitas} <StarFilledIcon className="text-yellow-500 h-4 w-4" />
+                  </p>
+                  <p className="flex items-center gap-1">
+                    <strong>Leadership:</strong> {review.kepemimpinan} <StarFilledIcon className="text-yellow-500 h-4 w-4" />
+                  </p>
+                </div>
               </CardContent>
               <CardFooter className="flex justify-end space-x-2 border-t pt-4 bg-gray-50">
-                {canEditOrDelete(review.userId) && editingReviewId !== review.id && ( // Only show buttons if not in edit mode
+                {canEditOrDelete(review.userId) && (
                   <>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleEditReview(review.id)} // Pass ID to edit handler
+                      onClick={() => handleEditReviewClick(review)} // Open edit modal
                       className="text-blue-600 hover:bg-blue-50"
                     >
                       Edit
@@ -246,11 +240,29 @@ const ReviewList: React.FC<ReviewListProps> = ({ schoolId }) => {
                     </Button>
                   </>
                 )}
-                {/* If in edit mode for this review, buttons are handled by ReviewForm itself */}
               </CardFooter>
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Edit Review Modal (Hidden by default, opens when currentEditingReview is set) */}
+      {currentEditingReview && (
+        <Dialog open={isEditReviewModalOpen} onOpenChange={setIsEditReviewModalOpen}>
+          <DialogContent className="sm:max-w-[700px] p-6">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold">Edit Your Review</DialogTitle>
+              <DialogDescription>
+                Make changes to your existing review.
+              </DialogDescription>
+            </DialogHeader>
+            <ReviewForm
+              schoolId={schoolId}
+              onReviewSubmitted={handleReviewAddedOrUpdated}
+              currentReview={currentEditingReview}
+            />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
