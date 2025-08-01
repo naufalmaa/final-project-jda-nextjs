@@ -100,7 +100,7 @@ export default function LandingPage() {
             <div className="absolute -top-4 -right-4 bg-white rounded-2xl shadow-lg p-4 border border-slate-200">
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-3 bg-slate-500 rounded-full"></div>
-                <span className="text-sm font-medium text-slate-700 ml-3">500+ Schools</span>
+                <span className="text-sm font-medium text-slate-700 ml-3">400+ Schools</span>
               </div>
             </div>
             
@@ -122,7 +122,7 @@ export default function LandingPage() {
               Why Parents Choose 
               <span className="text-slate-700"> ArahSekolah</span>
             </h2>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+            <p className="text-xl text-slate-600 max-w-4xl mx-auto">
               We make finding the perfect elementary school simple, transparent, and stress-free
             </p>
           </div>
@@ -130,20 +130,20 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Card className="group text-center p-8 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-3xl hover:shadow-2xl hover:scale-105 transition-all duration-300 hover:bg-slate-50">
               <CardHeader className="flex justify-center items-center mb-6">
-                <div className="w-20 h-20 bg-slate-100 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                  <Image src="/file.svg" alt="Comprehensive School Database" width={40} height={40} />
+                <div className="w-150 h-75 bg-slate-100 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                  <Image src="/database.jpg" alt="Comprehensive School Database" width={1000} height={40} />
                 </div>
               </CardHeader>
               <CardTitle className="text-2xl font-bold mb-4 text-slate-900">Comprehensive Database</CardTitle>
               <CardDescription className="text-slate-600 text-base leading-relaxed">
-                Access detailed profiles of 50+ elementary schools in Bandung with complete information about facilities, programs, and admission requirements.
+                Access detailed profiles of 400+ elementary schools in Bandung with complete information about facilities, programs, and admission requirements.
               </CardDescription>
             </Card>
             
             <Card className="group text-center p-8 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-3xl hover:shadow-2xl hover:scale-105 transition-all duration-300 hover:bg-slate-50">
               <CardHeader className="flex justify-center items-center mb-6">
-                <div className="w-20 h-20 bg-slate-100 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                  <Image src="/window.svg" alt="Authentic Parent Reviews" width={40} height={40} />
+                <div className="w-150 h-75 bg-slate-100 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                  <Image src="/review.jpg" alt="Authentic Parent Reviews" width={1000} height={40} />
                 </div>
               </CardHeader>
               <CardTitle className="text-2xl font-bold mb-4 text-slate-900">Verified Reviews</CardTitle>
@@ -154,8 +154,8 @@ export default function LandingPage() {
             
             <Card className="group text-center p-8 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-3xl hover:shadow-2xl hover:scale-105 transition-all duration-300 hover:bg-slate-50">
               <CardHeader className="flex justify-center items-center mb-6">
-                <div className="w-20 h-20 bg-slate-100 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                  <Image src="/vercel.svg" alt="Streamlined School Registration" width={40} height={40} />
+                <div className="w-150 h-75 bg-slate-100 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                  <Image src="/enrollment.jpg" alt="Streamlined School Registration" width={1000} height={40} />
                 </div>
               </CardHeader>
               <CardTitle className="text-2xl font-bold mb-4 text-slate-900">Easy Enrollment</CardTitle>

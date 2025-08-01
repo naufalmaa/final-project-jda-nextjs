@@ -72,12 +72,12 @@ export default function SignUpPage() {
         </div>
         
         <div className="w-full max-w-md mt-8 relative z-10">
-          <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-6 border border-white/10">
+          <div className="bg-white/5 backdrop-blur-sm rounded-xl p-2 border border-white/10">
             <Image
-              src="/window.svg"
+              src="/hero_image_2.jpg"
               alt="Education Illustration"
-              width={300}
-              height={300}
+              width={800}
+              height={800}
               className="mx-auto opacity-80"
               priority
             />

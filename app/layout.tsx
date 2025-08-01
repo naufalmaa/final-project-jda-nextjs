@@ -14,6 +14,11 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Arah Sekolah",
   description: "Find your next school",
+  icons: {
+    icon: [
+      { rel: 'icon', type: 'image/png', sizes: '35x35', url: '/logo_only.png' },
+    ], // Path to your favicon
+  },
 };
 
 export default async function RootLayout({

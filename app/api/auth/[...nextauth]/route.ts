@@ -76,38 +76,23 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
 
-    async jwt({ token, user, trigger, session }) {
-      // console.log("JWT callback: Initial token, user, trigger, session:", { token, user, trigger, session });
-
+    async jwt({ token, user }) {
+      // On initial sign-in, the `user` object from the `authorize` function or adapter is available.
       if (user) {
-        // user object is only available on initial sign in (or when adapter creates token)
         token.id = user.id;
-        token.role = user.role; // Cast user to 'any' if role is not directly on DefaultUser type
-      } else if (token.sub) {
-        // If 'user' is undefined (subsequent requests), use token.sub as the ID
-        // token.sub is the unique identifier for the user from the provider
-        token.id = token.sub;
+        token.role = user.role;
       }
-
-      // If session update triggered (e.g., signOut), update token role
-      if (trigger === 'update' && session?.user?.role) {
-        token.role = session.user.role;
-      }
-      // console.log("JWT callback: After update, token:", token);
       return token;
     },
-    async session({ session, token }): Promise<Session> {
-      // console.log("Session callback: Initial session and token:", { session, token });
-      // Assign properties from the token to the session.user object
-      if (token.id) {
+
+    async session({ session, token }) {
+      if (session.user) {
         session.user.id = token.id;
-      }
-      if (token.role) {
         session.user.role = token.role;
       }
-      // console.log("Session callback: After update, session:", session);
       return session;
     },
+    
   },
   secret: process.env.NEXTAUTH_SECRET,
 };

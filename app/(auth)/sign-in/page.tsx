@@ -35,6 +35,9 @@ export default function SignInPage() {
       setError(
         "An account with this email already exists. Please sign in with your email and password."
       );
+      
+    } else if (errorParam === "CredentialsSignin") { // CORRECTED: Added check for CredentialsSignin
+      setError("Your email or password is wrong. Please recheck again.");
     } else {
       setError(null);
     }
@@ -47,6 +50,7 @@ export default function SignInPage() {
     const res = await signIn("credentials", {
       ...data,
       redirect: false,
+      callbackUrl: "/dashboard/map",
     });
     setLoading(false);
 
@@ -88,12 +92,12 @@ export default function SignInPage() {
         </div>
 
         <div className="w-full max-w-md mt-8 relative z-10">
-          <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-6 border border-white/10">
+          <div className="bg-white/5 backdrop-blur-sm rounded-xl p-2 border border-white/10">
             <Image
-              src="/window.svg"
+              src="/hero_image_1.jpg"
               alt="Education Illustration"
-              width={300}
-              height={300}
+              width={800}
+              height={800}
               className="mx-auto opacity-80"
               priority
             />

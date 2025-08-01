@@ -1,19 +1,9 @@
 "use client";
-import { Provider } from "react-redux";
-import { store } from "@/redux/store"; // Adjusted path to your store
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { SessionProvider } from "next-auth/react";
 
-const queryClient = new QueryClient();
+// I've removed the redundant QueryClientProvider and SessionProvider from this file.
+import { Provider as ReactReduxProvider } from "react-redux";
+import { store } from "@/redux/store";
 
 export function ReduxProvider({ children }: { children: React.ReactNode }) {
-  return (
-    <Provider store={store}>
-      <QueryClientProvider client={queryClient}>
-        <SessionProvider>
-          {children}
-        </SessionProvider>
-      </QueryClientProvider>
-    </Provider>
-  );
+  return <ReactReduxProvider store={store}>{children}</ReactReduxProvider>;
 }

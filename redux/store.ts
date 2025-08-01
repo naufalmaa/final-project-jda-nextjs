@@ -3,6 +3,7 @@ import { configureStore, Middleware } from "@reduxjs/toolkit";
 import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
 import reviewReducer from './reviewSlice';
 import schoolReducer from './schoolSlice';
+import userReducer from './userSlice';
 
 // A simple custom middleware for logging actions
 const loggingMiddleware: Middleware = store => next => action => {
@@ -15,7 +16,8 @@ const loggingMiddleware: Middleware = store => next => action => {
 export const store = configureStore({
   reducer: { 
     review: reviewReducer,
-    school: schoolReducer 
+    school: schoolReducer,
+    user: userReducer 
   },
   // We can add custom middleware here.
   middleware: (getDefaultMiddleware) =>

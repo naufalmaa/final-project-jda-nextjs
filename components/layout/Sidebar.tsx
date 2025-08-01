@@ -1,23 +1,43 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { MapPin, List, BarChart2, User } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { MapPin, List, BarChart2, User, Users, LogOut  } from "lucide-react";
 import Image from "next/image"; // Import Image for optimized images
 import { cn } from "@/lib/utils";
+import { useSession, signOut } from "next-auth/react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const navItems = [
   { label: "Map", href: "/dashboard/map", icon: MapPin },
-  { label: "List", href: "/dashboard/list", icon: List },
+  { label: "Catalogue", href: "/dashboard/list", icon: List },
   { label: "Stats", href: "/dashboard/stats", icon: BarChart2 },
-  { label: "Profile", href: "/dashboard/profile", icon: User },
+];
+
+const adminNavItems = [
+    { label: "User Management", href: "/dashboard/users", icon: Users },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter()
+  const { data: session, status } = useSession();
+
+  const allNavItems = [...navItems];
+  if (session?.user?.role === 'SUPERADMIN') {
+    allNavItems.push(...adminNavItems);
+  }
 
   return (
-    <nav className="w-60 bg-gradient-to-b from-white via-slate-50/50 to-slate-100/30 backdrop-blur-md border-r border-slate-200/50 shadow-lg">
+    <nav className="w-60 bg-gradient-to-b from-white via-slate-50/50 to-slate-100/30 backdrop-blur-md border-r border-slate-200/50 shadow-lg flex flex-col h-screen">
       {/* Logo/Brand Section */}
       <div className="p-6 border-b border-slate-200/50">
         <div className="flex items-center">
@@ -39,13 +59,15 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation Menu */}
-      <div className="p-4">
-        <div className="mb-6">
+      <div className="flex flex-col h-full justify-between">
+      <div className="p-4 flex flex-col space-y-4 gap-3">
+        <div>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-3">
             Navigation
           </p>
           <ul className="space-y-2">
-            {navItems.map(({ label, href, icon: Icon }) => {
+            {/* CORRECTED: map over the dynamically generated nav items */}
+            {allNavItems.map(({ label, href, icon: Icon }) => {
               const isActive = pathname.startsWith(href);
               return (
                 <li key={href}>
@@ -85,7 +107,10 @@ export default function Sidebar() {
           </ul>
         </div>
 
-        {/* Quick Stats Card */}
+        </div>
+
+
+        {/* Quick Stats Card
         <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-4 border border-slate-200 shadow-lg">
           <div className="flex items-center mb-3">
             <div className="w-8 h-8 bg-slate-100 rounded-xl flex items-center justify-center mr-3">
@@ -109,10 +134,11 @@ export default function Sidebar() {
             </div>
             <p className="text-xs text-slate-500 mt-2">Database completion: 75%</p>
           </div>
-        </div>
+        </div> */}
 
-        {/* Help Section */}
-        <div className="mt-6 bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-4 text-white shadow-xl">
+        {/* Help Section and signout */}
+        <div>
+        <div className=" bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-4 m-4 text-white shadow-xl">
           <div className="flex items-center mb-3">
             <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center mr-3">
               <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -129,25 +155,52 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {/* User Profile Section */}
-        <div className="mt-6 pt-4 border-t border-slate-200/50">
-          <div className="flex items-center p-3 rounded-2xl bg-white/60 backdrop-blur-sm border border-slate-200/50 hover:bg-white/80 hover:shadow-md transition-all duration-300 cursor-pointer">
-            <div className="w-10 h-10 bg-gradient-to-br from-slate-400 to-slate-600 rounded-xl flex items-center justify-center mr-3 shadow-md">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-900 truncate">Parent User</p>
-              <p className="text-xs text-slate-500 truncate">Free Account</p>
-            </div>
-            <div className="ml-2">
-              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
+      <div className="p-4 border-t border-slate-200/50">
+          {status === 'loading' ? (
+              <div className="flex items-center p-2">
+                  <Skeleton className="h-10 w-10 rounded-xl mr-3" />
+                  <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-3 w-16" />
+                  </div>
+              </div>
+          ) : session?.user ? (
+              <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                      <button className="w-full flex items-center p-2 rounded-2xl bg-white/60 backdrop-blur-sm border border-slate-200/50 hover:bg-white/80 hover:shadow-md transition-all duration-300 cursor-pointer text-left">
+                          <div className="w-10 h-10 bg-gradient-to-br from-slate-400 to-slate-600 rounded-xl flex items-center justify-center mr-3 shadow-md shrink-0">
+                              {session.user.image ? (<Image src={session.user.image} alt="User" width={40} height={40} className="rounded-xl" />) : (<User className="w-5 h-5 text-white" />)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-slate-900 truncate">{session.user.name}</p>
+                              <p className="text-xs text-slate-500 truncate">{session.user.email}</p>
+                          </div>
+                      </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56 mb-2" side="top" align="start">
+                      <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <div className="p-2 text-xs text-muted-foreground">Signed in as <span className="font-semibold text-foreground">{session.user.role}</span></div>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onSelect={() => router.push('/dashboard/profile')}>
+                          <User className="mr-2 h-4 w-4" />
+                          <span>Profile</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => signOut({ callbackUrl: '/' })}>
+                          <LogOut className="mr-2 h-4 w-4" />
+                          <span>Sign Out</span>
+                      </DropdownMenuItem>
+                  </DropdownMenuContent>
+              </DropdownMenu>
+          ) : (
+            <Link href="/auth/sign-in" className="w-full text-center p-3 rounded-2xl bg-white/60 hover:bg-white/80 transition-all">
+                Sign In
+            </Link>
+          )}
           </div>
-        </div>
+          </div>
+
+
       </div>
     </nav>
   );

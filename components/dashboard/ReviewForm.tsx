@@ -149,7 +149,7 @@ export default function ReviewForm({ schoolId, onReviewSubmitted, onCancel, curr
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-1"> {/* Adjusted padding */}
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4"> {/* Adjusted padding */}
         {/* <p className="text-sm text-gray-600">
           {currentReview
             ? "Make changes to your existing review."
@@ -157,21 +157,21 @@ export default function ReviewForm({ schoolId, onReviewSubmitted, onCancel, curr
           }
         </p> */}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-2">
           <FormField
             control={form.control}
             name="name"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Your Name</FormLabel>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 gap-2">
                   {/* ADDED: Profile Picture or Abbreviation */}
                   {userImage ? (
                     <Image
                       src={userImage}
                       alt={userName || "User"}
-                      width={32}
-                      height={32}
+                      width={25}
+                      height={25}
                       className="rounded-full"
                     />
                   ) : (
@@ -183,6 +183,7 @@ export default function ReviewForm({ schoolId, onReviewSubmitted, onCancel, curr
                     <Input placeholder="John Doe" {...field} readOnly />
                   </FormControl>
                 </div>
+
                 <FormMessage />
               </FormItem>
             )}
@@ -228,7 +229,7 @@ export default function ReviewForm({ schoolId, onReviewSubmitted, onCancel, curr
         </div>
 
         {/* <h4 className="text-xl font-semibold text-gray-800 pt-4 border-t border-gray-100">Your Detailed Feedback</h4> */}
-        <div className="mt-4 border-t border-gray-100 pt-4">
+        <div className="mt-4 border-t border-gray-100 pt-4  p-2">
         <FormField
           control={form.control}
           name="komentar"
@@ -245,13 +246,13 @@ export default function ReviewForm({ schoolId, onReviewSubmitted, onCancel, curr
         </div>
 
         {/* <h4 className="text-xl font-semibold text-gray-800 pt-4 border-t border-gray-100">Ratings (1 = Poor, 5 = Excellent)</h4> */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 border-t border-gray-100 pt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 border-t border-gray-100 pt-4 p-2">
           <FormField
             control={form.control}
             name="kenyamanan"
             render={({ field: { value, onChange, ...fieldProps } }) => (
               <FormItem>
-                <FormLabel>Comfort/Environment:</FormLabel>
+                <FormLabel>COMFORTABILITY</FormLabel>
                 <FormControl>
                   <StarRatingInput value={value} onChange={onChange} {...fieldProps} />
                 </FormControl>
@@ -264,7 +265,7 @@ export default function ReviewForm({ schoolId, onReviewSubmitted, onCancel, curr
             name="pembelajaran"
             render={({ field: { value, onChange, ...fieldProps } }) => (
               <FormItem>
-                <FormLabel>Learning Quality:</FormLabel>
+                <FormLabel>LEARNING QUALITY</FormLabel>
                 <FormControl>
                   <StarRatingInput value={value} onChange={onChange} {...fieldProps} />
                 </FormControl>
@@ -277,7 +278,7 @@ export default function ReviewForm({ schoolId, onReviewSubmitted, onCancel, curr
             name="fasilitas"
             render={({ field: { value, onChange, ...fieldProps } }) => (
               <FormItem>
-                <FormLabel>Facilities:</FormLabel>
+                <FormLabel>FACILITIES</FormLabel>
                 <FormControl>
                   <StarRatingInput value={value} onChange={onChange} {...fieldProps} />
                 </FormControl>
@@ -290,7 +291,7 @@ export default function ReviewForm({ schoolId, onReviewSubmitted, onCancel, curr
             name="kepemimpinan"
             render={({ field: { value, onChange, ...fieldProps } }) => (
               <FormItem>
-                <FormLabel>Leadership/Management:</FormLabel>
+                <FormLabel>LEADERSHIP & MANAGEMENT</FormLabel>
                 <FormControl>
                   <StarRatingInput value={value} onChange={onChange} {...fieldProps} />
                 </FormControl>
