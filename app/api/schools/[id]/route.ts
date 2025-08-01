@@ -1,104 +1,107 @@
 // app/api/schools/[id]/route.ts
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { IdParamSchema, UpdateSchoolSchema } from '@/lib/schemas'; // Import schemas
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  // 1. await the params promise
-  const { id } = await params
-  const sid = Number(id)
-  if (isNaN(sid)) {
-    return NextResponse.json({ error: 'Invalid school ID' }, { status: 400 })
+  // Validate 'id' parameter using Zod
+  const paramValidation = IdParamSchema.safeParse(params);
+  if (!paramValidation.success) {
+    return NextResponse.json(
+      { message: "Invalid School ID format.", issues: paramValidation.error.issues },
+      { status: 400 }
+    );
   }
+  const schoolId = paramValidation.data.id;
 
-  // 2. fetch the record
-  const school = await prisma.school.findUnique({
-    where: { id: sid },
-    // no `include` of scalar fields—Prisma returns those by default
-  })
+  try {
+    const school = await prisma.school.findUnique({
+      where: { id: schoolId },
+      include: { // Assuming you want reviews included for detail view, as per previous conversation
+        reviews: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+      },
+    });
 
-  // 3. not found?
-  if (!school) {
-    return NextResponse.json({ error: 'School not found' }, { status: 404 })
+    if (!school) {
+      return NextResponse.json({ message: "School not found." }, { status: 404 });
+    }
+
+    // Calculate average rating if reviews exist (assuming structure for this)
+    let avgRating = 0;
+    if (school.reviews && school.reviews.length > 0) {
+      const totalRating = school.reviews.reduce((sum, review) =>
+        sum + review.kenyamanan + review.pembelajaran + review.fasilitas + review.kepemimpinan, 0);
+      avgRating = totalRating / (school.reviews.length * 4); // 4 criteria per review
+    }
+
+    return NextResponse.json({ ...school, avgRating });
+  } catch (error: any) {
+    console.error("Failed to fetch school:", error);
+    return NextResponse.json(
+      { message: "Internal Server Error" },
+      { status: 500 }
+    );
   }
-
-  return NextResponse.json(school)
 }
 
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const { id } = await params
-  const sid = Number(id)
-  if (isNaN(sid)) {
-    return NextResponse.json({ error: 'Invalid ID' }, { status: 400 })
+  // Validate 'id' parameter
+  const paramValidation = IdParamSchema.safeParse(params);
+  if (!paramValidation.success) {
+    return NextResponse.json(
+      { message: "Invalid School ID format.", issues: paramValidation.error.issues },
+      { status: 400 }
+    );
+  }
+  const schoolId = paramValidation.data.id;
+
+  const body = await request.json();
+
+  // Validate request body using Zod schema
+  const validationResult = UpdateSchoolSchema.safeParse(body);
+
+  if (!validationResult.success) {
+    return NextResponse.json(
+      { message: "Invalid request body for school update.", issues: validationResult.error.issues },
+      { status: 400 }
+    );
   }
 
-  const updates = await request.json()
-  const school = await prisma.school.update({
-    where: { id: sid },
-    data: updates,
-  })
-  return NextResponse.json(school)
+  const validatedData = validationResult.data;
+
+  try {
+    const updatedSchool = await prisma.school.update({
+      where: { id: schoolId },
+      data: validatedData, // Use validated data
+    });
+    return NextResponse.json(updatedSchool);
+  } catch (error: any) {
+    console.error("Failed to update school:", error);
+    if (error.code === 'P2025') {
+        return NextResponse.json({ message: "School not found for update." }, { status: 404 });
+    }
+    return NextResponse.json(
+      { message: "Failed to update school." },
+      { status: 500 }
+    );
+  }
 }
-
-
-// // app/api/schools/[id]/route.ts
-// import { NextResponse } from 'next/server';
-// import { prisma } from '@/lib/prisma';
-
-// export async function GET(
-//   req: Request,
-//   { params }: { params: Promise<{ id: string }> }
-// ) {
-//   // Await the params before using its properties
-//   const { id: idParam } = await params;
-//   const id = parseInt(idParam, 10);
-  
-//   const school = await prisma.school.findUnique({
-//     where: { id },
-//     select: {
-//       // bring in full text fields if you like:
-//       description: true,
-//       programs: true,
-//       achievements: true,
-//       website: true,
-//       contact: true,
-//     },
-//   });
-  
-//   if (!school) {
-//     return NextResponse.json({ error: 'Not found' }, { status: 404 });
-//   }
-  
-//   return NextResponse.json(school);
-// }
-
-// // app/api/schools/[id]/route.ts
-// import { NextResponse } from 'next/server';
-// import { prisma } from '@/lib/prisma';
-
-// export async function GET(
-//   req: Request,
-//   { params }: { params: { id: string } }
-// ) {
-//   const id = parseInt(params.id, 10);
-//   const school = await prisma.school.findUnique({
-//     where: { id },
-//     select: {
-//       // bring in full text fields if you like:
-//       description: true,
-//       programs: true,
-//       achievements: true,
-//       website: true,
-//       contact: true,
-//     },
-//   });
-//   if (!school) {
-//     return NextResponse.json({ error: 'Not found' }, { status: 404 });
-//   }
-//   return NextResponse.json(school);
-// }

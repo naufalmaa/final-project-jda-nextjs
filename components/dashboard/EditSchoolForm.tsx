@@ -5,7 +5,7 @@ import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+// import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Form,
   FormControl,
@@ -20,6 +20,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { School } from "@prisma/client";
+
+import { useAppDispatch, useAppSelector } from '@/redux/store';
+import { updateSchoolAsync } from '@/redux/schoolSlice';
 
 interface EditSchoolFormProps {
   schoolData: School;
@@ -45,11 +48,11 @@ const formSchema = z.object({
 });
 
 export default function EditSchoolForm({ schoolData, onFormSubmitted }: EditSchoolFormProps) {
-  const queryClient = useQueryClient();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      ...schoolData,
       name: schoolData.name || "",
       status: schoolData.status || "",
       npsn: schoolData.npsn || "",
@@ -68,47 +71,70 @@ export default function EditSchoolForm({ schoolData, onFormSubmitted }: EditScho
     },
   });
 
-  const updateSchoolMutation = useMutation({
-    mutationFn: async (updatedData: z.infer<typeof formSchema>) => {
-      const dataToSend = {
-        ...updatedData,
-        achievements: updatedData.achievements || "", // Send as string or null
-        programs: updatedData.programs || "", // Send as string or null
-        // Convert lat and lng to numbers, handling null/empty string cases
-        lat: updatedData.lat === '' ? null : (typeof updatedData.lat === 'string' ? parseFloat(updatedData.lat) : updatedData.lat),
-        lng: updatedData.lng === '' ? null : (typeof updatedData.lng === 'string' ? parseFloat(updatedData.lng) : updatedData.lng),
-          // Ensure optional string fields are null if empty string
-        telp: updatedData.telp || "",
-        contact: updatedData.contact || "",
-        website: updatedData.website || "",
-      };
+  // const updateSchoolMutation = useMutation({
+  //   mutationFn: async (updatedData: z.infer<typeof formSchema>) => {
+  //     const dataToSend = {
+  //       ...updatedData,
+  //       achievements: updatedData.achievements || "", // Send as string or null
+  //       programs: updatedData.programs || "", // Send as string or null
+  //       // Convert lat and lng to numbers, handling null/empty string cases
+  //       lat: updatedData.lat === '' ? null : (typeof updatedData.lat === 'string' ? parseFloat(updatedData.lat) : updatedData.lat),
+  //       lng: updatedData.lng === '' ? null : (typeof updatedData.lng === 'string' ? parseFloat(updatedData.lng) : updatedData.lng),
+  //         // Ensure optional string fields are null if empty string
+  //       telp: updatedData.telp || "",
+  //       contact: updatedData.contact || "",
+  //       website: updatedData.website || "",
+  //     };
 
-      const res = await fetch(`/api/schools/${schoolData.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dataToSend),
+  //     const res = await fetch(`/api/schools/${schoolData.id}`, {
+  //       method: "PUT",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify(dataToSend),
+  //     });
+
+  //     if (!res.ok) {
+  //       const errorBody = await res.json().catch(() => ({ message: 'Unknown error' }));
+  //       console.error("Update School API Error:", errorBody);
+  //       throw new Error(errorBody.error || errorBody.message || "Failed to update school.");
+  //     }
+  //     return res.json();
+  //   },
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries({ queryKey: ["school", schoolData.id] });
+  //     toast.success("School details updated successfully!");
+  //     onFormSubmitted();
+  //   },
+  //   onError: (error) => {
+  //     toast.error(`Error updating school: ${error.message}`);
+  //   },
+  // });
+
+  const dispatch = useAppDispatch();
+  const { loading } = useAppSelector(state => state.school);
+
+  // ADD `useEffect` to reset the form when new `schoolData` is provided
+  useEffect(() => {
+    if (schoolData) {
+      form.reset({
+        ...schoolData,
       });
+    }
+  }, [schoolData, form]);
 
-      if (!res.ok) {
-        const errorBody = await res.json().catch(() => ({ message: 'Unknown error' }));
-        console.error("Update School API Error:", errorBody);
-        throw new Error(errorBody.error || errorBody.message || "Failed to update school.");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["school", schoolData.id] });
-      toast.success("School details updated successfully!");
-      onFormSubmitted();
-    },
-    onError: (error) => {
-      toast.error(`Error updating school: ${error.message}`);
-    },
-  });
+  const onSubmit = (values: z.infer<typeof formSchema>) => {
+    const updatedData = { ...schoolData, ...values };
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    updateSchoolMutation.mutate(values);
-  }
+    // REPLACE: updateSchoolMutation with Redux thunk
+    dispatch(updateSchoolAsync(updatedData))
+      .unwrap()
+      .then(() => {
+        toast.success("School details updated successfully!");
+        onFormSubmitted();
+      })
+      .catch((error) => {
+        toast.error(error);
+      });
+  };
 
   return (
     <div className="px-6 pb-6">
@@ -431,10 +457,10 @@ export default function EditSchoolForm({ schoolData, onFormSubmitted }: EditScho
             </Button>
             <Button 
               type="submit" 
-              disabled={updateSchoolMutation.isPending} 
+              disabled={loading} 
               className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
             >
-              {updateSchoolMutation.isPending ? (
+              {loading ? (
                 <div className="flex items-center space-x-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   <span>Saving...</span>

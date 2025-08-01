@@ -1,128 +1,120 @@
 // File: app/api/reviews/[id]/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'; // Ensure this path is correct
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { UpdateReviewSchema, IdParamSchema } from "@/lib/schemas"; // Import schemas
 
 export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const session = await getServerSession(authOptions);
-
-  // Authorization check
   if (!session || !session.user || !session.user.id || !session.user.role) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  // CORRECTED: Parse reviewId to integer
-  const reviewId = parseInt(params.id, 10);
-  if (isNaN(reviewId)) {
-    return NextResponse.json({ error: "Invalid review ID" }, { status: 400 });
+  // Validate 'id' parameter
+  const paramValidation = IdParamSchema.safeParse(params);
+  if (!paramValidation.success) {
+    return NextResponse.json(
+      { message: "Invalid Review ID format.", issues: paramValidation.error.issues },
+      { status: 400 }
+    );
   }
+  const reviewId = paramValidation.data.id;
 
   try {
     const reviewToDelete = await prisma.review.findUnique({
-      where: { id: reviewId }, // Use the parsed integer ID
-      select: { userId: true }, // Select userId to check ownership
+      where: { id: reviewId },
+      select: { userId: true },
     });
 
     if (!reviewToDelete) {
-      return NextResponse.json({ error: "Review not found" }, { status: 404 });
+      return NextResponse.json({ message: "Review not found" }, { status: 404 });
     }
 
-    // Check if the user is the owner OR has ADMIN/SUPERADMIN role
     const isOwner = reviewToDelete.userId === session.user.id;
-    const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPERADMIN";
+    const isAdmin = session.user.role === "SCHOOL_ADMIN" || session.user.role === "SUPERADMIN";
 
     if (!isOwner && !isAdmin) {
       return NextResponse.json({ message: "Forbidden: You are not authorized to delete this review." }, { status: 403 });
     }
 
     await prisma.review.delete({
-      where: { id: reviewId }, // Use the parsed integer ID
+      where: { id: reviewId },
     });
 
     return NextResponse.json({ message: "Review deleted successfully" }, { status: 200 });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error deleting review:", error);
-    return NextResponse.json({ error: "Failed to delete review" }, { status: 500 });
+    if (error.code === 'P2025') { // Handle Prisma 'record not found' error
+        return NextResponse.json({ message: "Review not found for deletion." }, { status: 404 });
+    }
+    return NextResponse.json({ message: "Failed to delete review" }, { status: 500 });
   }
 }
 
 export async function PUT(
-  req: NextRequest, // Changed Request to NextRequest for consistency
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const session = await getServerSession(authOptions)
-  if (!session?.user?.email) { // Consider using session.user.id and role for consistency
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!session?.user?.id) { // Use session.user.id for consistency with other checks
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
   }
 
-  // CORRECTED: Parse reviewId to integer directly from params.id
-  const reviewId = parseInt(params.id, 10);
-  if (isNaN(reviewId)) {
-    return NextResponse.json({ error: 'Invalid review id' }, { status: 400 })
+  // Validate 'id' parameter
+  const paramValidation = IdParamSchema.safeParse(params);
+  if (!paramValidation.success) {
+    return NextResponse.json(
+      { message: "Invalid Review ID format.", issues: paramValidation.error.issues },
+      { status: 400 }
+    );
+  }
+  const reviewId = paramValidation.data.id;
+
+  const body = await req.json();
+
+  // Validate request body using Zod schema
+  const validationResult = UpdateReviewSchema.safeParse(body);
+
+  if (!validationResult.success) {
+    return NextResponse.json(
+      { message: "Invalid request body for review update.", issues: validationResult.error.issues },
+      { status: 400 }
+    );
   }
 
-  // parse and validate incoming fields
-  const {
-    name,
-    role,
-    biaya,
-    komentar,
-    kenyamanan: kStr,
-    pembelajaran: pStr,
-    fasilitas: fStr,
-    kepemimpinan: kpStr,
-  } = await req.json()
-
-  const kenyamanan   = parseInt(kStr, 10)
-  const pembelajaran = parseInt(pStr, 10)
-  const fasilitas    = parseInt(fStr, 10)
-  const kepemimpinan = parseInt(kpStr, 10)
-
-  if (
-    [kenyamanan, pembelajaran, fasilitas, kepemimpinan].some(isNaN)
-  ) {
-    return NextResponse.json({ error: 'Invalid rating value' }, { status: 400 })
-  }
+  const validatedData = validationResult.data;
 
   try {
-    // Ensure the user can only edit their own review (or is admin/superadmin)
     const existing = await prisma.review.findUnique({
-      where: { id: reviewId }, // Use the parsed integer ID
-      select: { userId: true }, // Select userId to check ownership
+      where: { id: reviewId },
+      select: { userId: true },
     });
 
     if (!existing) {
-      return NextResponse.json({ error: 'Review not found' }, { status: 404 });
+      return NextResponse.json({ message: 'Review not found' }, { status: 404 });
     }
 
     const isOwner = existing.userId === session.user.id;
-    const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPERADMIN";
+    const isAdmin = session.user.role === "SCHOOL_ADMIN" || session.user.role === "SUPERADMIN";
 
     if (!isOwner && !isAdmin) {
-      return NextResponse.json({ error: 'Forbidden: You are not authorized to update this review.' }, { status: 403 });
+      return NextResponse.json({ message: 'Forbidden: You are not authorized to update this review.' }, { status: 403 });
     }
 
     const updated = await prisma.review.update({
-      where: { id: reviewId }, // Use the parsed integer ID
-      data: {
-        name,
-        role,
-        biaya,
-        komentar,
-        kenyamanan,
-        pembelajaran,
-        fasilitas,
-        kepemimpinan,
-      },
+      where: { id: reviewId },
+      data: validatedData, // Use validated data
     })
     return NextResponse.json(updated)
-  } catch (err) {
+  } catch (err: any) {
     console.error(err)
-    return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
+    if (err.code === 'P2025') { // Handle Prisma 'record not found' error
+        return NextResponse.json({ message: "Review not found for update." }, { status: 404 });
+    }
+    return NextResponse.json({ message: 'Something went wrong' }, { status: 500 })
   }
 }

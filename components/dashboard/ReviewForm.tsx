@@ -5,7 +5,6 @@ import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Form,
   FormControl,
@@ -20,21 +19,30 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { StarRatingInput } from "@/components/ui/star-rating-input";
-import { Review } from "@prisma/client";
+import Image from "next/image"; // Added Image component
 
-interface ReviewWithUser extends Review {
-  user: {
-    id: string;
-    name: string | null;
-    email: string | null;
-  };
-}
+import { useAppDispatch, useAppSelector } from '@/redux/store';
+import { createReviewAsync, updateReviewAsync, ReviewWithUser } from '@/redux/reviewSlice';
+import { useSession } from 'next-auth/react';
 
 interface ReviewFormProps {
   schoolId: number;
   onReviewSubmitted: () => void;
+  onCancel: () => void; 
   currentReview?: ReviewWithUser | null; // Optional: for editing existing review
+  userName: string;
+  userImage: string;
 }
+
+// Utility function to get name initials
+const getInitials = (name: string | null | undefined): string => {
+  if (!name) return "";
+  const parts = name.split(" ");
+  if (parts.length > 1) {
+    return parts[0][0] + parts[parts.length - 1][0];
+  }
+  return parts[0][0];
+};
 
 const formSchema = z.object({
   name: z.string().min(1, "Your name is required."),
@@ -47,20 +55,23 @@ const formSchema = z.object({
   kepemimpinan: z.number().min(1, "Rating is required.").max(5, "Rating must be between 1 and 5."),
 });
 
-export default function ReviewForm({ schoolId, onReviewSubmitted, currentReview }: ReviewFormProps) {
-  const queryClient = useQueryClient();
+export default function ReviewForm({ schoolId, onReviewSubmitted, onCancel, currentReview, userName, userImage }: ReviewFormProps) {
+
+  const dispatch = useAppDispatch();
+  const { loading } = useAppSelector(state => state.review);
+  const { data: session } = useSession();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
+      name: currentReview?.name || userName || "",
       role: "",
       biaya: "",
       komentar: "",
-      kenyamanan: 3,
-      pembelajaran: 3,
-      fasilitas: 3,
-      kepemimpinan: 3,
+      kenyamanan: 5,
+      pembelajaran: 5,
+      fasilitas: 5,
+      kepemimpinan: 5,
     },
   });
 
@@ -68,6 +79,7 @@ export default function ReviewForm({ schoolId, onReviewSubmitted, currentReview 
   useEffect(() => {
     if (currentReview) {
       form.reset({
+        ...currentReview,
         name: currentReview.name || "",
         role: currentReview.role || "",
         biaya: currentReview.biaya || "",
@@ -80,60 +92,70 @@ export default function ReviewForm({ schoolId, onReviewSubmitted, currentReview 
     } else {
       // Reset to default values for a new review
       form.reset({
-        name: "",
+        name: userName || "",
         role: "",
         biaya: "",
         komentar: "",
-        kenyamanan: 3,
-        pembelajaran: 3,
-        fasilitas: 3,
-        kepemimpinan: 3,
+        kenyamanan: 5,
+        pembelajaran: 5,
+        fasilitas: 5,
+        kepemimpinan: 5,
       });
     }
-  }, [currentReview, form]);
+  }, [currentReview, form, userName]);
 
-  const reviewMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof formSchema>) => {
-      const url = currentReview ? `/api/reviews/${currentReview.id}` : `/api/reviews`;
-      const method = currentReview ? "PUT" : "POST";
+  const onSubmit = (values: z.infer<typeof formSchema>) => {
+    if (!session?.user?.id) {
+      toast.error("You must be logged in to submit a review.");
+      return;
+    }
 
-      const res = await fetch(url, {
-        method: method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, schoolId: schoolId }),
-      });
+    const reviewData = {
+      ...values,
+      userId: session.user.id,
+    };
 
-      if (!res.ok) {
-        const errorBody = await res.json().catch(() => ({ message: 'Unknown error' }));
-        console.error("Review API Error:", errorBody);
-        throw new Error(errorBody.error || errorBody.message || `Failed to ${currentReview ? 'update' : 'add'} review.`);
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["reviews", schoolId] });
-      toast.success(currentReview ? "Review updated successfully!" : "Review added successfully!");
-      form.reset(); // Reset form after successful submission
-      onReviewSubmitted(); // Close the modal
-    },
-    onError: (error) => {
-      toast.error(`Error ${currentReview ? 'updating' : 'adding'} review: ${error.message}`);
-    },
-  });
+    if (currentReview) {
+      
+      dispatch(updateReviewAsync({ reviewId: currentReview.id, reviewData }))
+        .unwrap()
+        .then(() => {
+          toast.success("Review updated successfully!");
+          onReviewSubmitted();
+        })
+        .catch((error) => {
+          toast.error(error);
+        });
+    } else {
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    reviewMutation.mutate(values);
-  }
+      const reviewData = {
+        ...values,
+        schoolId: schoolId,
+        userId: session.user.id,
+      };
+      // MODIFIED: Dispatch the create thunk for new reviews
+      dispatch(createReviewAsync(reviewData))
+        .unwrap()
+        .then(() => {
+          toast.success("Review submitted successfully!");
+          onReviewSubmitted();
+        })
+        .catch((error) => {
+          toast.error(error);
+        });
+    }
+  };
+
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-1"> {/* Adjusted padding */}
-        <p className="text-sm text-gray-600">
+        {/* <p className="text-sm text-gray-600">
           {currentReview
             ? "Make changes to your existing review."
             : "Share your experience about this school."
           }
-        </p>
+        </p> */}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
@@ -142,9 +164,25 @@ export default function ReviewForm({ schoolId, onReviewSubmitted, currentReview 
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Your Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g., Jane Doe" {...field} />
-                </FormControl>
+                <div className="flex items-center space-x-2">
+                  {/* ADDED: Profile Picture or Abbreviation */}
+                  {userImage ? (
+                    <Image
+                      src={userImage}
+                      alt={userName || "User"}
+                      width={32}
+                      height={32}
+                      className="rounded-full"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200 text-gray-700 font-bold text-sm">
+                      {getInitials(userName)}
+                    </div>
+                  )}
+                  <FormControl>
+                    <Input placeholder="John Doe" {...field} readOnly />
+                  </FormControl>
+                </div>
                 <FormMessage />
               </FormItem>
             )}
@@ -156,16 +194,17 @@ export default function ReviewForm({ schoolId, onReviewSubmitted, currentReview 
               <FormItem>
                 <FormLabel>Your Role</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
+                  <FormControl className="w-full">
                     <SelectTrigger>
                       <SelectValue placeholder="Select your role" />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
+                  <SelectContent className="border border-gray-200">
                     <SelectItem value="Parent">Parent</SelectItem>
                     <SelectItem value="Student">Student</SelectItem>
                     <SelectItem value="Alumni">Alumni</SelectItem>
                     <SelectItem value="Teacher">Teacher</SelectItem>
+                    <SelectItem value="Education Activist">Education Activist</SelectItem>
                     <SelectItem value="Other">Other</SelectItem>
                   </SelectContent>
                 </Select>
@@ -188,7 +227,8 @@ export default function ReviewForm({ schoolId, onReviewSubmitted, currentReview 
           />
         </div>
 
-        <h4 className="text-xl font-semibold text-gray-800 pt-4 border-t border-gray-100">Your Detailed Feedback</h4>
+        {/* <h4 className="text-xl font-semibold text-gray-800 pt-4 border-t border-gray-100">Your Detailed Feedback</h4> */}
+        <div className="mt-4 border-t border-gray-100 pt-4">
         <FormField
           control={form.control}
           name="komentar"
@@ -202,9 +242,10 @@ export default function ReviewForm({ schoolId, onReviewSubmitted, currentReview 
             </FormItem>
           )}
         />
+        </div>
 
-        <h4 className="text-xl font-semibold text-gray-800 pt-4 border-t border-gray-100">Ratings (1 = Poor, 5 = Excellent)</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* <h4 className="text-xl font-semibold text-gray-800 pt-4 border-t border-gray-100">Ratings (1 = Poor, 5 = Excellent)</h4> */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 border-t border-gray-100 pt-4">
           <FormField
             control={form.control}
             name="kenyamanan"
@@ -263,17 +304,17 @@ export default function ReviewForm({ schoolId, onReviewSubmitted, currentReview 
           <Button
             type="button"
             variant="outline"
-            onClick={onReviewSubmitted} // This will close the modal
-            disabled={reviewMutation.isPending}
-            className="text-gray-700 hover:bg-gray-100"
+            onClick={onCancel} // This will close the modal
+            disabled={loading}
+            className="text-gray-700 hover:bg-gray-100 mr-4"
           >
             Cancel
           </Button>
-          <Button type="submit" className="w-auto bg-primary hover:bg-primary-dark" disabled={reviewMutation.isPending}>
-            {reviewMutation.isPending ? (currentReview ? "Updating..." : "Submitting...") : (currentReview ? "Update Review" : "Submit Review")}
+          <Button type="submit" className="w-auto bg-primary hover:bg-primary-dark" disabled={loading }>
+            {loading  ? (currentReview ? "Updating..." : "Submitting...") : (currentReview ? "Update Review" : "Submit Review")}
           </Button>
         </div>
       </form>
     </Form>
   );
-}
+  }

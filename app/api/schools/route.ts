@@ -1,18 +1,14 @@
 // File: app/api/schools/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma"; // Assuming your prisma client is exported from here
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // Correct import for authOptions
-import { getServerSession } from "next-auth"; // Import getServerSession
+import { prisma } from "@/lib/prisma";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { getServerSession } from "next-auth";
+import { CreateSchoolSchema } from "@/lib/schemas"; // Import CreateSchoolSchema
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions); // Get the session
-
-    // For GET schools, all users can read, so no specific role check is needed here
-    // But having the session available is useful for debugging and future logic
+    const session = await getServerSession(authOptions);
     console.log("User session for GET schools:", session);
-
     const schools = await prisma.school.findMany();
     return NextResponse.json(schools);
   } catch (error) {
@@ -21,7 +17,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// Add a placeholder for POST if it doesn't exist, we'll implement it next
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
 
@@ -29,6 +24,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: "Forbidden: Only Superadmin can create schools." }, { status: 403 });
   }
 
-  // // TODO: Implement school creation logic here (Superadmin only)
-  return NextResponse.json({ message: "School creation not yet implemented for Superadmin." }, { status: 501 });
+  const body = await req.json();
+
+  // Validate the request body with Zod
+  const validationResult = CreateSchoolSchema.safeParse(body);
+
+  if (!validationResult.success) {
+    return NextResponse.json(
+      { message: "Invalid request body for school creation.", issues: validationResult.error.issues },
+      { status: 400 }
+    );
+  }
+
+  const validatedData = validationResult.data;
+
+  try {
+    const newSchool = await prisma.school.create({
+      data: validatedData, // Use the validated data
+    });
+    return NextResponse.json(newSchool, { status: 201 });
+  } catch (error) {
+    console.error("Error creating school:", error);
+    return NextResponse.json({ message: "Failed to create school" }, { status: 500 });
+  }
 }

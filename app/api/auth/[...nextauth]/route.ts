@@ -7,28 +7,6 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import { Adapter } from "next-auth/adapters";
 
-// Extend the Session and JWT types for NextAuth
-declare module "next-auth" {
-  interface Session {
-    user: {
-      id: string; // Add id to the user object in the session
-      role: string; // Add role to the user object in the session
-    } & DefaultSession["user"];
-  }
-
-  interface User extends DefaultUser {
-    id: string; // Ensure the User type (returned by authorize) has an ID
-    role: string; // Ensure the User type has a role
-  }
-}
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    id: string; // Add id to the JWT token
-    role: string; // Add role to the JWT token
-  }
-}
-
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as Adapter,
   providers: [
@@ -105,7 +83,7 @@ export const authOptions: NextAuthOptions = {
       // console.log("JWT callback: After update, token:", token);
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }): Promise<Session> {
       // console.log("Session callback: Initial session and token:", { session, token });
       // Assign properties from the token to the session.user object
       if (token.id) {

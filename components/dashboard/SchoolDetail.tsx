@@ -2,18 +2,20 @@
 
 "use client";
 
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { School } from "@/lib/types";
+import React, { useState, useEffect } from "react";
+// import { useQuery } from "@tanstack/react-query";
+// import { School } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
+// import { Separator } from "@/components/ui/separator";
 import EditSchoolForm from "./EditSchoolForm";
 import { useSession } from "next-auth/react";
 import dynamic from 'next/dynamic';
 import DetailPageSkeleton from "@/components/skeletons/DetailPageSkeleton";
 
+import { useAppDispatch, useAppSelector } from '@/redux/store';
+import { fetchSchoolById, setSchool } from '@/redux/schoolSlice';
 
 const DynamicSchoolMap = dynamic(() => import('@/components/dashboard/SchoolMap'), {
   ssr: false,
@@ -24,55 +26,68 @@ interface SchoolDetailProps {
   schoolId: number;
 }
 
-const fetchSchoolById = async (schoolId: number): Promise<School> => {
-  const res = await fetch(`/api/schools/${schoolId}`);
-  if (!res.ok) {
-    throw new Error("Failed to fetch school details");
-  }
-  return res.json();
-};
+// REMOVE the old fetch function
+// const fetchSchoolById = async (schoolId: number): Promise<School> => {
+//   const res = await fetch(`/api/schools/${schoolId}`);
+//   if (!res.ok) {
+//     throw new Error("Failed to fetch school details");
+//   }
+//   return res.json();
+// };
 
 export default function SchoolDetail({ schoolId }: SchoolDetailProps) {
+  const [isEditSchoolModalOpen, setIsEditSchoolModalOpen] = useState(false);
   const { data: session } = useSession();
-  const isAdminOrSuperadmin = session?.user?.role === "ADMIN" || session?.user?.role === "SUPERADMIN";
 
-  const {
-    data: school,
-    isLoading,
-    isError,
-    error,
-  } = useQuery<School, Error>({
-    queryKey: ["school", schoolId],
-    queryFn: () => fetchSchoolById(schoolId),
-  });
+  // REPLACE: useQuery with these lines
+  const dispatch = useAppDispatch();
+  const { selected: school, loading, error } = useAppSelector((state) => state.school);
+
+  // ADD this useEffect hook
+  useEffect(() => {
+    // Only fetch if schoolId is a valid number
+    if (schoolId) {
+      dispatch(fetchSchoolById(schoolId));
+    }
+  }, [dispatch, schoolId]);
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const isAdminOrSuperadmin = session?.user?.role === "SUPERADMIN" || session?.user?.role === "SCHOOL_ADMIN"// or ADMIN
 
-  if (isLoading) {
-    return (
-    <DetailPageSkeleton />
-    );
+  // CHECK FOR LOADING STATE FIRST
+  if (loading) {
+    return <DetailPageSkeleton />;
   }
 
-  if (isError) {
+  // THEN CHECK FOR ERROR
+  if (error) {
     return (
       <div className="text-center py-12">
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 max-w-md mx-auto">
-          <p className="text-red-700 font-semibold">Error: {error?.message || "Could not load school details."}</p>
+          <p className="text-red-700 font-semibold">Error: {error || "Could not load school details."}</p>
         </div>
       </div>
     );
   }
 
-  if (!school) {
-    return (
-      <div className="text-center py-12">
-        <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 max-w-md mx-auto">
-          <p className="text-gray-600">No school data found.</p>
-        </div>
-      </div>
-    );
+  // FINALLY, CHECK IF DATA IS AVAILABLE
+  // if (!school) {
+  //   return (
+  //     <div className="text-center py-12">
+  //       <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 max-w-md mx-auto">
+  //         <p className="text-gray-600">No school data found.</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+    if (!school) {
+    return <DetailPageSkeleton />;
   }
+
+  const handleEditSchoolClick = () => {
+    // We already have the school data in Redux, so we can directly open the modal
+    setIsEditSchoolModalOpen(true);
+  };
 
   return (
     <div className="space-y-8">
@@ -169,7 +184,7 @@ export default function SchoolDetail({ schoolId }: SchoolDetailProps) {
                 <DynamicSchoolMap 
                   lat={school.lat} 
                   lng={school.lng} 
-                  schoolName={school.name} 
+                  name={school.name} 
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-500">
