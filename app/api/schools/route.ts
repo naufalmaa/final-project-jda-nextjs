@@ -38,9 +38,13 @@ export async function POST(req: NextRequest) {
 
   const validatedData = validationResult.data;
 
+  const dataToUpdate = Object.fromEntries(
+      Object.entries(validatedData).filter(([, value]) => value !== undefined)
+    );
+
   try {
     const newSchool = await prisma.school.create({
-      data: validatedData, // Use the validated data
+      data: dataToUpdate, // Use the validated data
     });
     return NextResponse.json(newSchool, { status: 201 });
   } catch (error) {

@@ -88,10 +88,14 @@ export async function PUT(
 
   const validatedData = validationResult.data;
 
+  const dataToUpdate = Object.fromEntries(
+      Object.entries(validatedData).filter(([, value]) => value !== undefined)
+    );
+
   try {
     const updatedSchool = await prisma.school.update({
       where: { id: schoolId },
-      data: validatedData, // Use validated data
+      data: dataToUpdate, // Use validated data
     });
     return NextResponse.json(updatedSchool);
   } catch (error: any) {

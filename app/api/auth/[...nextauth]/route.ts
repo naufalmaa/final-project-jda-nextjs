@@ -1,6 +1,7 @@
 // File: app/api/auth/[...nextauth]/route.ts
 
 import NextAuth, { NextAuthOptions, Session, DefaultSession, DefaultUser } from "next-auth"; // Added DefaultSession, DefaultUser
+import GoogleProvider from "next-auth/providers/google"; // Add this import
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
@@ -10,6 +11,10 @@ import { Adapter } from "next-auth/adapters";
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as Adapter,
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
     CredentialsProvider({
       name: "Credentials",
       credentials: {
@@ -38,19 +43,13 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Invalid password");
         }
 
-        // console.log("Authorize callback: User found and password valid.", {
-        //   id: user.id,
-        //   email: user.email,
-        //   name: user.name,
-        //   role: user.role,
-        // });
-
         // Ensure these fields are explicitly returned and match the User type extension
         return {
           id: user.id,
           email: user.email,
           name: user.name,
           role: user.role,
+          image: user.image,
         };
       },
     }),
@@ -59,10 +58,24 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   pages: {
-    signIn: "/auth/signin",
+    signIn: "/auth/sign-in",
     error: "/auth/error",
   },
   callbacks: {
+
+    async signIn({ user, account, profile }) {
+      if (account?.provider === 'google' && user?.email) {
+        const existingUser = await prisma.user.findUnique({
+          where: { email: user.email },
+        });
+
+        if (existingUser && existingUser.id !== user.id) {
+          return '/auth/sign-in?error=AccountAlreadyExists';
+        }
+      }
+      return true;
+    },
+
     async jwt({ token, user, trigger, session }) {
       // console.log("JWT callback: Initial token, user, trigger, session:", { token, user, trigger, session });
 

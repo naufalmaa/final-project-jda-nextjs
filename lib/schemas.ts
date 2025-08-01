@@ -16,7 +16,7 @@ export const RatingSchema = z.number().int().min(1).max(5, "Rating must be betwe
 export const CreateReviewSchema = z.object({
   schoolId: z.number().int("School ID must be an integer.").min(1, "School ID is required."),
   name: z.string().min(1, "Name is required.").optional().nullable(),
-  role: z.string().min(1, "Role is required.").optional().nullable(), // e.g., "Parent", "Student", "Alumni"
+  role: z.string().min(1, "Role is required."), // e.g., "Parent", "Student", "Alumni"
   biaya: z.string().min(1, "Cost is required."),
   komentar: z.string().min(1, "Comment is required."),
   kenyamanan: RatingSchema,

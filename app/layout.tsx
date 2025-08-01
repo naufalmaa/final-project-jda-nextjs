@@ -7,7 +7,7 @@ import "./globals.css"; // Your global CSS imports
 import { Toaster } from "@/components/ui/sonner"; // Assuming you use Sonner for toasts
 import { getServerSession } from "next-auth"; // Import getServerSession for server-side session fetching
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // Import your authOptions
-import { ReduxProvider } from "@/redux/provider"
+import Providers from "@/components/Providers"; // CORRECTED: Import the new Providers component
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,17 +21,17 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Fetch session on the server in the root layout for all client components below
-  // const session = await getServerSession(authOptions);
+  
+  const session = await getServerSession(authOptions);
 
   return (
     <html lang="en">
       <body className={inter.className}>
-        {/* Wrap your entire application with AppProviders */}
-        <ReduxProvider>
+        {/* CORRECTED: Wrap the entire application with the Providers client component. */}
+        <Providers session={session}>
           {children}
           <Toaster /> {/* Your toaster component */}
-        </ReduxProvider>
+        </Providers>
       </body>
     </html>
   );

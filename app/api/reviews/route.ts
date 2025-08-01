@@ -1,26 +1,25 @@
 // File: app/api/reviews/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { CreateReviewSchema, IdParamSchema } from "@/lib/schemas"; // Import schemas
 
 export async function GET(req: NextRequest) {
-  const url = new URL(req.url);
-  const schoolIdParam = url.searchParams.get("schoolId");
-
+  const schoolIdParam = req.nextUrl.searchParams.get("schoolId");
   let schoolId: number | undefined;
 
   // Validate schoolId query parameter if present
   if (schoolIdParam) {
-    const paramValidation = IdParamSchema.safeParse({ id: schoolIdParam }); // Use IdParamSchema for query param
-    if (!paramValidation.success) {
+    const parsedId = parseInt(schoolIdParam, 10);
+
+    if (isNaN(parsedId)) {
       return NextResponse.json(
-        { message: "Invalid schoolId query parameter.", issues: paramValidation.error.issues },
+        { message: "Invalid schoolId query parameter. Must be a number." },
         { status: 400 }
       );
     }
-    schoolId = paramValidation.data.id;
+    schoolId = parsedId;
   }
 
   try {
@@ -32,7 +31,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(reviews);
   } catch (error) {
     console.error("Error fetching reviews:", error);
-    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { message: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }
 
@@ -40,7 +42,13 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user || session.user.role !== "USER") {
-    return NextResponse.json({ message: "Forbidden: Only authenticated users with 'USER' role can create reviews." }, { status: 403 });
+    return NextResponse.json(
+      {
+        message:
+          "Forbidden: Only authenticated users with 'USER' role can create reviews.",
+      },
+      { status: 403 }
+    );
   }
 
   const body = await req.json();
@@ -50,7 +58,10 @@ export async function POST(req: NextRequest) {
 
   if (!validationResult.success) {
     return NextResponse.json(
-      { message: "Invalid request body for review creation.", issues: validationResult.error.issues },
+      {
+        message: "Invalid request body for review creation.",
+        issues: validationResult.error.issues,
+      },
       { status: 400 }
     );
   }
@@ -61,7 +72,7 @@ export async function POST(req: NextRequest) {
     const review = await prisma.review.create({
       data: {
         school: { connect: { id: validatedData.schoolId } }, // Use validated schoolId
-        user:   { connect: { id: session.user.id } },
+        user: { connect: { id: session.user.id } },
         name: validatedData.name || session.user.name, // Use validated data and fallback to session name
         role: validatedData.role,
         biaya: validatedData.biaya,
